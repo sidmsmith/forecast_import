@@ -26,6 +26,14 @@ if (urlOrg) {
 }
 
 let token = null;
+let forecastFileData = null; // Store parsed forecast file data
+
+// File section elements
+const fileSection = document.getElementById('fileSection');
+const forecastFileInput = document.getElementById('forecast_file');
+const forecastFileDisplay = document.getElementById('forecast_file_display');
+const forecastFileLoadBtn = document.getElementById('forecastFileLoadBtn');
+const forecastFileStatus = document.getElementById('forecastFileStatus');
 
 // THEME DEFINITIONS
 const themes = {
@@ -130,6 +138,10 @@ async function authenticate() {
   status(`Authenticated as ${org}`, 'success');
   if (mainUI?.style) mainUI.style.display = 'block';
   workspace?.classList.add('unlocked');
+  // Show file section after authentication
+  if (fileSection) {
+    fileSection.style.display = 'block';
+  }
 }
 
 orgInput?.addEventListener('keypress', async e => {
@@ -161,3 +173,233 @@ window.addEventListener('load', async () => {
     orgInput?.focus();
   }
 });
+
+// Helper function to update red shading on file input textbox
+function updateFileInputShading(element, isEmpty) {
+  if (!element) return;
+  if (isEmpty || !element.value || element.value.trim() === '') {
+    // Apply red shading when empty
+    element.style.setProperty('background-color', 'rgba(255, 0, 0, 0.1)', 'important');
+    element.style.setProperty('border-color', 'rgba(255, 0, 0, 0.3)', 'important');
+  } else {
+    // Remove red shading when has value
+    element.style.setProperty('background-color', '', 'important');
+    element.style.setProperty('border-color', '', 'important');
+  }
+}
+
+// Function to set forecast file status message
+function setForecastFileStatus(text) {
+  if (forecastFileStatus) {
+    forecastFileStatus.textContent = text || '';
+  }
+}
+
+// Validate forecast file (simple validation - just check extension and if not empty)
+async function validateForecastFile(file) {
+  if (!file) {
+    return { valid: false, error: 'No file selected' };
+  }
+
+  const extension = file.name.split('.').pop().toLowerCase();
+  if (!['csv', 'xls', 'xlsx'].includes(extension)) {
+    return { valid: false, error: 'File must be a CSV or Excel file (.csv, .xls, .xlsx)' };
+  }
+
+  try {
+    let rows = [];
+    
+    if (extension === 'csv') {
+      const text = await file.text();
+      rows = text.split(/\r?\n/).map(line => {
+        // Parse CSV line (handle quoted values)
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        result.push(current.trim());
+        return result;
+      }).filter(row => row.some(cell => cell.length > 0)); // Filter empty rows
+    } else {
+      // Excel file
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      rows = rows.map(row => Array.isArray(row) ? row.map(cell => String(cell || '').trim()) : []);
+      rows = rows.filter(row => row.some(cell => cell.length > 0)); // Filter empty rows
+    }
+
+    if (rows.length === 0) {
+      return { valid: false, error: 'File is empty or contains no data rows' };
+    }
+
+    // Count data rows (excluding potential header)
+    const rowCount = rows.length;
+
+    return { valid: true, rowCount: rowCount };
+  } catch (error) {
+    return { valid: false, error: `Error reading file: ${error.message}` };
+  }
+}
+
+// Parse forecast file to get row count
+async function parseForecastFile(file) {
+  const extension = file.name.split('.').pop().toLowerCase();
+  let rows = [];
+  let headerDetected = false;
+
+  if (extension === 'csv') {
+    const text = await file.text();
+    const lines = text.split(/\r?\n/);
+    lines.forEach((line, index) => {
+      // Parse CSV line (handle quoted values)
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          result.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      result.push(current.trim());
+      
+      // Check if first row is a header (optional - just for counting)
+      if (index === 0 && result.length > 0 && result[0].toLowerCase().includes('header')) {
+        headerDetected = true;
+        return; // Skip header row
+      }
+      if (result.some(cell => cell.length > 0)) {
+        rows.push(result);
+      }
+    });
+  } else {
+    // Excel file
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: 'array' });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const excelRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    excelRows.forEach((row, index) => {
+      const rowArray = Array.isArray(row) ? row.map(cell => String(cell || '').trim()) : [];
+      // Check if first row is a header (optional)
+      if (index === 0 && rowArray.length > 0 && rowArray[0].toLowerCase().includes('header')) {
+        headerDetected = true;
+        return; // Skip header row
+      }
+      if (rowArray.some(cell => cell.length > 0)) {
+        rows.push(rowArray);
+      }
+    });
+  }
+
+  return { rows, headerDetected };
+}
+
+// Forecast file picker button
+if (forecastFileLoadBtn && forecastFileInput) {
+  forecastFileLoadBtn.addEventListener('click', () => {
+    forecastFileInput.click();
+  });
+}
+
+// Forecast file change handler
+if (forecastFileInput) {
+  forecastFileInput.addEventListener('change', async (e) => {
+    if (!e.target.files.length) {
+      forecastFileData = null;
+      setForecastFileStatus('');
+      if (forecastFileDisplay) {
+        forecastFileDisplay.value = '';
+        updateFileInputShading(forecastFileDisplay, true);
+      }
+      return;
+    }
+    
+    const file = e.target.files[0];
+    const fileName = file.name;
+    
+    // Validate file format before loading
+    const validation = await validateForecastFile(file);
+    
+    if (!validation.valid) {
+      // Show error message
+      setForecastFileStatus('');
+      
+      if (forecastFileDisplay) {
+        forecastFileDisplay.value = '';
+        forecastFileDisplay.removeAttribute('title');
+        // Restore red shading to indicate file needs to be loaded
+        updateFileInputShading(forecastFileDisplay, true);
+      }
+      
+      // Clear forecast file data
+      forecastFileData = null;
+      e.target.value = '';
+      alert(`Invalid file format: ${validation.error}`);
+      return;
+    }
+    
+    // File is valid, parse and store data
+    try {
+      const parseResult = await parseForecastFile(file);
+      forecastFileData = parseResult.rows;
+      const headerDetected = parseResult.headerDetected;
+      
+      // Update display textbox - show only filename
+      if (forecastFileDisplay) {
+        forecastFileDisplay.value = fileName;
+        forecastFileDisplay.title = fileName; // Tooltip shows filename on hover
+        // Remove red shading when file is loaded
+        updateFileInputShading(forecastFileDisplay, false);
+      }
+      
+      // Use validation count if available, otherwise use parsed rows count
+      const itemCount = validation.rowCount || forecastFileData.length;
+      const statusMessage = itemCount > 0
+        ? headerDetected
+          ? `${itemCount} items loaded (header row detected and skipped)`
+          : `${itemCount} items loaded`
+        : 'No data rows detected.';
+      setForecastFileStatus(statusMessage);
+    } catch (error) {
+      // File parsing failed - show error and restore red shading
+      console.error('Error parsing forecast file:', error);
+      setForecastFileStatus('');
+      
+      if (forecastFileDisplay) {
+        forecastFileDisplay.value = '';
+        forecastFileDisplay.removeAttribute('title');
+        // Restore red shading to indicate file needs to be loaded
+        updateFileInputShading(forecastFileDisplay, true);
+      }
+      
+      // Clear forecast file data
+      forecastFileData = null;
+      e.target.value = '';
+      alert(`Error loading file: ${error.message || 'Failed to parse file. Please ensure the file is a valid CSV or Excel file.'}`);
+    }
+  });
+}
+
+// Initialize file input shading on load
+if (forecastFileDisplay) {
+  updateFileInputShading(forecastFileDisplay, true);
+}
