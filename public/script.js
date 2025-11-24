@@ -1,7 +1,5 @@
 // public/script.js
 const orgInput = document.getElementById('org');
-const mainUI = document.getElementById('mainUI');
-const workspace = document.getElementById('workspace');
 const statusEl = document.getElementById('status');
 const themeSelectorBtn = document.getElementById('themeSelectorBtn');
 const themeModal = new bootstrap.Modal(document.getElementById('themeModal'));
@@ -34,6 +32,9 @@ const forecastFileInput = document.getElementById('forecast_file');
 const forecastFileDisplay = document.getElementById('forecast_file_display');
 const forecastFileLoadBtn = document.getElementById('forecastFileLoadBtn');
 const forecastFileStatus = document.getElementById('forecastFileStatus');
+const uploadForecastBtn = document.getElementById('uploadForecastBtn');
+const consoleSection = document.getElementById('consoleSection');
+const consoleEl = document.getElementById('console');
 
 // THEME DEFINITIONS
 const themes = {
@@ -120,8 +121,6 @@ async function authenticate() {
   const org = orgInput.value.trim();
   if (!org) {
     status('ORG required', 'error');
-    if (mainUI?.style) mainUI.style.display = 'none';
-    workspace?.classList.remove('unlocked');
     return;
   }
 
@@ -129,18 +128,18 @@ async function authenticate() {
   const res = await api('auth', { org });
   if (!res.success) {
     status(res.error || 'Auth failed', 'error');
-    if (mainUI?.style) mainUI.style.display = 'none';
-    workspace?.classList.remove('unlocked');
     return;
   }
 
   token = res.token;
   status(`Authenticated as ${org}`, 'success');
-  if (mainUI?.style) mainUI.style.display = 'block';
-  workspace?.classList.add('unlocked');
   // Show file section after authentication
   if (fileSection) {
     fileSection.style.display = 'block';
+  }
+  // Show console section after authentication
+  if (consoleSection) {
+    consoleSection.style.display = 'block';
   }
 }
 
@@ -402,4 +401,20 @@ if (forecastFileInput) {
 // Initialize file input shading on load
 if (forecastFileDisplay) {
   updateFileInputShading(forecastFileDisplay, true);
+}
+
+// Console logging function
+function logToConsole(message, type = 'info') {
+  if (!consoleEl) return;
+  const timestamp = new Date().toLocaleTimeString();
+  const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'info';
+  consoleEl.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+  consoleEl.scrollTop = consoleEl.scrollHeight;
+}
+
+// Upload Forecast button handler
+if (uploadForecastBtn) {
+  uploadForecastBtn.addEventListener('click', () => {
+    logToConsole('Upload Forecast button clicked', 'info');
+  });
 }
