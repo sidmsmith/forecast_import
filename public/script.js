@@ -128,11 +128,29 @@ async function authenticate() {
   const res = await api('auth', { org });
   if (!res.success) {
     status(res.error || 'Auth failed', 'error');
+    // On auth failure, hide file and console sections, show auth section
+    if (fileSection) {
+      fileSection.style.display = 'none';
+    }
+    if (consoleSection) {
+      consoleSection.style.display = 'none';
+    }
+    const authSection = document.getElementById('authSection');
+    if (authSection) {
+      authSection.style.display = 'block';
+    }
     return;
   }
 
   token = res.token;
   status(`Authenticated as ${org}`, 'success');
+  
+  // Hide auth section on successful authentication
+  const authSection = document.getElementById('authSection');
+  if (authSection) {
+    authSection.style.display = 'none';
+  }
+  
   // Show file section after authentication
   if (fileSection) {
     fileSection.style.display = 'block';
@@ -162,12 +180,8 @@ window.addEventListener('load', async () => {
   
   // Auto-authenticate if Organization parameter is provided in URL
   if (urlOrg) {
-    // Hide auth section when auto-authenticating
-    const authSection = document.getElementById('authSection');
-    if (authSection) {
-      authSection.style.display = 'none';
-    }
-    authenticate();
+    // Auto-authenticate (auth section will be hidden on success, shown on failure)
+    await authenticate();
   } else {
     orgInput?.focus();
   }
