@@ -9,7 +9,7 @@ const CLIENT_ID = "omnicomponent.1.0.0";
 // CLIENT_SECRET for sales2 environment
 // Set MANHATTAN_SECRET in Vercel environment variables, or it will use the fallback
 const CLIENT_SECRET = process.env.MANHATTAN_SECRET || "b4s8rgTyg55XYNun";
-const PASSWORD = process.env.MANHATTAN_PASSWORD || "N0$alenopay2o25!";
+const PASSWORD = process.env.MANHATTAN_PASSWORD || "Blu3sk!es2400";
 const USERNAME_BASE = "rndadmin@"; // Forecast app uses rndadmin@ instead of sdtadmin@
 
 // Log which values are being used (for debugging)
@@ -76,17 +76,6 @@ async function getToken(org) {
   console.log(`[AUTH] CLIENT_SECRET set: ${!!CLIENT_SECRET}`);
   console.log(`[AUTH] CLIENT_SECRET value: ${CLIENT_SECRET ? CLIENT_SECRET.substring(0, 4) + '...' : 'NOT SET'}`);
   
-  // Log the encoded body to verify encoding
-  const bodyString = body.toString();
-  const passwordMatch = bodyString.match(/password=([^&]+)/);
-  const encodedPassword = passwordMatch ? passwordMatch[1] : 'NOT FOUND';
-  console.log(`[AUTH] Request body (masked): ${bodyString.replace(/password=[^&]+/, 'password=***')}`);
-  console.log(`[AUTH] Username in body: ${bodyString.match(/username=([^&]+)/)?.[1] || 'NOT FOUND'}`);
-  console.log(`[AUTH] Password encoded length: ${encodedPassword.length}`);
-  console.log(`[AUTH] Password encoded first 10 chars: ${encodedPassword.substring(0, 10)}...`);
-  console.log(`[AUTH] Password encoded contains %24 (encoded $): ${encodedPassword.includes('%24')}`);
-  console.log(`[AUTH] Password encoded contains %21 (encoded !): ${encodedPassword.includes('%21')}`);
-  
   // Also log the raw password characters for verification (masked)
   const passwordChars = PASSWORD.split('').map((c, i) => {
     if (i === 0 || i === PASSWORD.length - 1) return c;
@@ -97,23 +86,47 @@ async function getToken(org) {
   console.log(`[AUTH] Password pattern: ${passwordChars}`);
 
   try {
+    // Convert URLSearchParams to string for fetch
+    const bodyString = body.toString();
+    
+    // Log the encoded body to verify encoding
+    const passwordMatch = bodyString.match(/password=([^&]+)/);
+    const encodedPassword = passwordMatch ? passwordMatch[1] : 'NOT FOUND';
+    console.log(`[AUTH] Request body (masked): ${bodyString.replace(/password=[^&]+/, 'password=***')}`);
+    console.log(`[AUTH] Username in body: ${bodyString.match(/username=([^&]+)/)?.[1] || 'NOT FOUND'}`);
+    console.log(`[AUTH] Password encoded length: ${encodedPassword.length}`);
+    console.log(`[AUTH] Password encoded first 10 chars: ${encodedPassword.substring(0, 10)}...`);
+    console.log(`[AUTH] Password encoded contains %24 (encoded $): ${encodedPassword.includes('%24')}`);
+    console.log(`[AUTH] Password encoded contains %21 (encoded !): ${encodedPassword.includes('%21')}`);
+    
     const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         Authorization: 'Basic ' + Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64')
       },
-      body
+      body: bodyString
     });
 
     if (!res.ok) {
       const errorText = await res.text();
-      console.error(`[AUTH] Failed with status ${res.status}: ${errorText}`);
+      let errorMessage = `Authentication failed (${res.status})`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error_description || errorJson.error || errorMessage;
+      } catch {
+        errorMessage = errorText || errorMessage;
+      }
+      console.error(`[AUTH] Failed with status ${res.status}: ${errorMessage}`);
       console.error(`[AUTH] Response headers:`, JSON.stringify(Object.fromEntries(res.headers.entries())));
-      return null;
+      throw new Error(errorMessage);
     }
     
     const data = await res.json();
+    if (!data.access_token) {
+      console.error(`[AUTH] No access_token in response:`, JSON.stringify(data));
+      throw new Error('No access token received from authentication server');
+    }
     console.log(`[AUTH] Success for ORG: ${org}`);
     return data.access_token;
   } catch (error) {
@@ -160,13 +173,19 @@ export default async function handler(req, res) {
 
   // === AUTHENTICATE ===
   if (action === 'auth') {
-    const token = await getToken(org);
-    if (!token) {
+    try {
+      const token = await getToken(org);
+      if (!token) {
+        await sendHA("auth_failed", org);
+        return res.json({ success: false, error: "Authentication failed. Please check Vercel logs for details." });
+      }
+      await sendHA("auth_success", org);
+      return res.json({ success: true, token });
+    } catch (error) {
+      console.error(`[AUTH] Error during authentication:`, error.message);
       await sendHA("auth_failed", org);
-      return res.json({ success: false, error: "Authentication failed. Please check Vercel logs for details." });
+      return res.json({ success: false, error: error.message || "Authentication failed. Please check Vercel logs for details." });
     }
-    await sendHA("auth_success", org);
-    return res.json({ success: true, token });
   }
 
   // === GET CONDITION CODES ===
