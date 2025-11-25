@@ -788,19 +788,21 @@ function mapForecastRowToAPI(row, headerRow) {
     };
     
     forecastData.ForecastId = getValue(['ForecastId', 'Forecast ID', 'Forecast_id', 'forecastid', 'ItemId', 'Item ID', 'Item_id', 'itemid']);
-    forecastData.ForecastLevel = getNumberValue(['ForecastLevel', 'Forecast Level', 'Forecast_level', 'forecastlevel']);
     forecastData.CurrentForecast = getNumberValue(['CurrentForecast', 'Current Forecast', 'Current_forecast', 'currentforecast']);
+    // ForecastLevel should use the same value as CurrentForecast (per Postman collection)
+    forecastData.ForecastLevel = forecastData.CurrentForecast;
   } else {
-    // Assume standard order (first 3 columns)
+    // Assume standard order: ForecastId, CurrentForecast (ForecastLevel uses same value)
     forecastData.ForecastId = row[0] || '';
-    forecastData.ForecastLevel = parseFloat(row[1]) || 0;
-    forecastData.CurrentForecast = parseFloat(row[2]) || 0;
+    forecastData.CurrentForecast = parseFloat(row[1]) || 0;
+    // ForecastLevel should use the same value as CurrentForecast (per Postman collection)
+    forecastData.ForecastLevel = forecastData.CurrentForecast;
   }
   
   // Build ForecastFactors array
   forecastData.ForecastFactors = [
     {
-      ForecastLevel: forecastData.ForecastLevel,
+      ForecastLevel: forecastData.CurrentForecast, // Uses CurrentForecast value
       CurrentForecast: forecastData.CurrentForecast
     }
   ];
