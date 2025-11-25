@@ -408,12 +408,13 @@ if (forecastFileInput) {
       if (forecastFileDisplay) {
         forecastFileDisplay.value = '';
         forecastFileDisplay.removeAttribute('title');
-        // Restore red shading to indicate file needs to be loaded
-        updateFileInputShading(forecastFileDisplay, true);
+      // Restore red shading to indicate file needs to be loaded
+      updateFileInputShading(forecastFileDisplay, true);
       }
       
       // Clear forecast file data
       forecastFileData = null;
+      forecastFileHeader = null;
       e.target.value = '';
       alert(`Invalid file format: ${validation.error}`);
       return;
@@ -468,6 +469,7 @@ if (forecastFileInput) {
       
       // Clear forecast file data
       forecastFileData = null;
+      forecastFileHeader = null;
       e.target.value = '';
       alert(`Error loading file: ${error.message || 'Failed to parse file. Please ensure the file is a valid CSV or Excel file.'}`);
     }
@@ -664,6 +666,7 @@ if (locationFileInput) {
   locationFileInput.addEventListener('change', async (e) => {
     if (!e.target.files.length) {
       locationFileData = null;
+      locationFileHeader = null;
       setLocationFileStatus('');
       if (locationFileDisplay) {
         locationFileDisplay.value = '';
@@ -685,12 +688,13 @@ if (locationFileInput) {
       if (locationFileDisplay) {
         locationFileDisplay.value = '';
         locationFileDisplay.removeAttribute('title');
-        // Restore red shading to indicate file needs to be loaded
-        updateFileInputShading(locationFileDisplay, true);
+      // Restore red shading to indicate file needs to be loaded
+      updateFileInputShading(locationFileDisplay, true);
       }
       
       // Clear location file data
       locationFileData = null;
+      locationFileHeader = null;
       e.target.value = '';
       alert(`Invalid file format: ${validation.error}`);
       return;
@@ -745,6 +749,7 @@ if (locationFileInput) {
       
       // Clear location file data
       locationFileData = null;
+      locationFileHeader = null;
       e.target.value = '';
       alert(`Error loading file: ${error.message || 'Failed to parse file. Please ensure the file is a valid CSV or Excel file.'}`);
     }
