@@ -756,10 +756,147 @@ if (locationFileInput) {
   });
 }
 
+// Helper function to map CSV row to forecast API format
+function mapForecastRowToAPI(row, headerRow) {
+  // If we have a header row, map by column names
+  // Otherwise, assume standard order: ForecastId, ForecastLevel, CurrentForecast
+  let forecastData = {};
+  
+  if (headerRow && headerRow.length > 0) {
+    // Map by header names
+    const headerMap = {};
+    headerRow.forEach((header, index) => {
+      const normalized = String(header).trim().toLowerCase();
+      headerMap[normalized] = index;
+    });
+    
+    // Map fields based on header
+    const getValue = (fieldNames) => {
+      for (const fieldName of fieldNames) {
+        const index = headerMap[fieldName.toLowerCase()];
+        if (index !== undefined && row[index] !== undefined) {
+          return String(row[index]).trim();
+        }
+      }
+      return '';
+    };
+    
+    const getNumberValue = (fieldNames) => {
+      const value = getValue(fieldNames);
+      const num = parseFloat(value);
+      return isNaN(num) ? 0 : num;
+    };
+    
+    forecastData.ForecastId = getValue(['ForecastId', 'Forecast ID', 'Forecast_id', 'forecastid', 'ItemId', 'Item ID', 'Item_id', 'itemid']);
+    forecastData.ForecastLevel = getNumberValue(['ForecastLevel', 'Forecast Level', 'Forecast_level', 'forecastlevel']);
+    forecastData.CurrentForecast = getNumberValue(['CurrentForecast', 'Current Forecast', 'Current_forecast', 'currentforecast']);
+  } else {
+    // Assume standard order (first 3 columns)
+    forecastData.ForecastId = row[0] || '';
+    forecastData.ForecastLevel = parseFloat(row[1]) || 0;
+    forecastData.CurrentForecast = parseFloat(row[2]) || 0;
+  }
+  
+  // Build ForecastFactors array
+  forecastData.ForecastFactors = [
+    {
+      ForecastLevel: forecastData.ForecastLevel,
+      CurrentForecast: forecastData.CurrentForecast
+    }
+  ];
+  
+  return forecastData;
+}
+
 // Upload Forecast button handler
 if (uploadForecastBtn) {
-  uploadForecastBtn.addEventListener('click', () => {
-    logToConsole('Upload Forecast button clicked', 'info');
+  uploadForecastBtn.addEventListener('click', async () => {
+    if (!forecastFileData || forecastFileData.length === 0) {
+      logToConsole('Error: No forecast file loaded', 'error');
+      status('Please load a forecast file first', 'error');
+      return;
+    }
+    
+    if (!token) {
+      logToConsole('Error: Not authenticated', 'error');
+      status('Please authenticate first', 'error');
+      return;
+    }
+    
+    const org = orgInput.value.trim();
+    if (!org) {
+      logToConsole('Error: No ORG specified', 'error');
+      status('ORG required', 'error');
+      return;
+    }
+    
+    logToConsole(`Starting forecast upload for ${forecastFileData.length} items...`, 'info');
+    status('Uploading forecasts...', 'info');
+    
+    let successCount = 0;
+    let failCount = 0;
+    const errors = [];
+    
+    // Process each forecast
+    for (let i = 0; i < forecastFileData.length; i++) {
+      const row = forecastFileData[i];
+      try {
+        const forecastData = mapForecastRowToAPI(row, forecastFileHeader);
+        
+        if (!forecastData.ForecastId) {
+          logToConsole(`Row ${i + 1}: Skipped - missing ForecastId`, 'warning');
+          failCount++;
+          errors.push(`Row ${i + 1}: Missing ForecastId`);
+          continue;
+        }
+        
+        if (!forecastData.CurrentForecast && forecastData.CurrentForecast !== 0) {
+          logToConsole(`Row ${i + 1}: Skipped - missing or invalid CurrentForecast`, 'warning');
+          failCount++;
+          errors.push(`Row ${i + 1}: Missing or invalid CurrentForecast`);
+          continue;
+        }
+        
+        logToConsole(`Row ${i + 1}: Saving forecast ${forecastData.ForecastId}...`, 'info');
+        
+        // Log the raw JSON payload
+        const payload = { org, forecastData };
+        logToConsole(`Request Payload (Row ${i + 1}):\n${JSON.stringify(payload, null, 2)}`, 'info');
+        
+        const res = await api('save-forecast', payload);
+        
+        // Log the raw response
+        logToConsole(`Response (Row ${i + 1}):\n${JSON.stringify(res, null, 2)}`, 'info');
+        
+        if (res.success) {
+          logToConsole(`Row ${i + 1}: Successfully saved forecast ${forecastData.ForecastId}`, 'success');
+          successCount++;
+        } else {
+          logToConsole(`Row ${i + 1}: Failed to save forecast ${forecastData.ForecastId}: ${res.error || 'Unknown error'}`, 'error');
+          failCount++;
+          errors.push(`Row ${i + 1} (${forecastData.ForecastId}): ${res.error || 'Unknown error'}`);
+        }
+      } catch (error) {
+        logToConsole(`Row ${i + 1}: Error - ${error.message}`, 'error');
+        failCount++;
+        errors.push(`Row ${i + 1}: ${error.message}`);
+      }
+    }
+    
+    // Summary
+    logToConsole(`\n=== Upload Complete ===`, 'info');
+    logToConsole(`Success: ${successCount}`, 'success');
+    logToConsole(`Failed: ${failCount}`, failCount > 0 ? 'error' : 'info');
+    
+    if (errors.length > 0 && errors.length <= 10) {
+      logToConsole('Errors:', 'error');
+      errors.forEach(err => logToConsole(`  - ${err}`, 'error'));
+    } else if (errors.length > 10) {
+      logToConsole(`First 10 errors (${errors.length} total):`, 'error');
+      errors.slice(0, 10).forEach(err => logToConsole(`  - ${err}`, 'error'));
+    }
+    
+    status(`Upload complete: ${successCount} succeeded, ${failCount} failed`, successCount > 0 ? 'success' : 'error');
   });
 }
 

@@ -221,6 +221,24 @@ export default async function handler(req, res) {
     }
   }
 
+  // === SAVE FORECAST ===
+  if (action === 'save-forecast') {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: "No token" });
+    
+    const { forecastData } = req.body;
+    if (!forecastData) {
+      return res.json({ success: false, error: "No forecast data provided" });
+    }
+
+    try {
+      const result = await apiCall('POST', '/ai-forecast/api/ai-forecast/forecast/save', token, org, forecastData);
+      return res.json({ success: result.error ? false : true, result });
+    } catch (error) {
+      return res.json({ success: false, error: error.message });
+    }
+  }
+
   // === Need token ===
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: "No token" });
