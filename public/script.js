@@ -808,6 +808,48 @@ function mapForecastRowToAPI(row, headerRow) {
   return forecastData;
 }
 
+// Helper function to map CSV row to forecast projection API format
+function mapForecastProjectionToAPI(row, headerRow, forecastData) {
+  // Uses the same forecastData but adds PeriodStartDate and ManualForecastEventType
+  let projectionData = {
+    ForecastId: forecastData.ForecastId,
+    CurrentForecast: forecastData.CurrentForecast,
+    ManualForecastEventType: 'User'
+  };
+  
+  // Try to get PeriodStartDate from the row
+  if (headerRow && headerRow.length > 0) {
+    const headerMap = {};
+    headerRow.forEach((header, index) => {
+      const normalized = String(header).trim().toLowerCase();
+      headerMap[normalized] = index;
+    });
+    
+    const getValue = (fieldNames) => {
+      for (const fieldName of fieldNames) {
+        const index = headerMap[fieldName.toLowerCase()];
+        if (index !== undefined && row[index] !== undefined) {
+          return String(row[index]).trim();
+        }
+      }
+      return '';
+    };
+    
+    projectionData.PeriodStartDate = getValue(['PeriodStartDate', 'Period Start Date', 'Period_start_date', 'periodstartdate', 'StartDate', 'Start Date', 'startdate']);
+  } else {
+    // Assume PeriodStartDate is in column 3 (index 3) if available
+    projectionData.PeriodStartDate = row[3] || '';
+  }
+  
+  // If no PeriodStartDate found, use today's date as default
+  if (!projectionData.PeriodStartDate) {
+    const today = new Date();
+    projectionData.PeriodStartDate = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+  }
+  
+  return projectionData;
+}
+
 // Upload Forecast button handler
 if (uploadForecastBtn) {
   uploadForecastBtn.addEventListener('click', async () => {
@@ -859,18 +901,40 @@ if (uploadForecastBtn) {
         
         logToConsole(`Row ${i + 1}: Saving forecast ${forecastData.ForecastId}...`, 'info');
         
-        // Log the raw JSON payload
+        // Log the raw JSON payload for Save Forecast
         const payload = { org, forecastData };
-        logToConsole(`Request Payload (Row ${i + 1}):\n${JSON.stringify(payload, null, 2)}`, 'info');
+        logToConsole(`Save Forecast - Request Payload (Row ${i + 1}):\n${JSON.stringify(payload, null, 2)}`, 'info');
         
         const res = await api('save-forecast', payload);
         
-        // Log the raw response
-        logToConsole(`Response (Row ${i + 1}):\n${JSON.stringify(res, null, 2)}`, 'info');
+        // Log the raw response for Save Forecast
+        logToConsole(`Save Forecast - Response (Row ${i + 1}):\n${JSON.stringify(res, null, 2)}`, 'info');
         
         if (res.success) {
           logToConsole(`Row ${i + 1}: Successfully saved forecast ${forecastData.ForecastId}`, 'success');
-          successCount++;
+          
+          // Now call Save Forecast Projections API
+          logToConsole(`Row ${i + 1}: Saving forecast projections for ${forecastData.ForecastId}...`, 'info');
+          
+          const projectionData = mapForecastProjectionToAPI(row, forecastFileHeader, forecastData);
+          
+          // Log the raw JSON payload for Save Forecast Projections
+          const projectionPayload = { org, projectionData };
+          logToConsole(`Save Forecast Projections - Request Payload (Row ${i + 1}):\n${JSON.stringify(projectionPayload, null, 2)}`, 'info');
+          
+          const projectionRes = await api('save-forecast-projections', projectionPayload);
+          
+          // Log the raw response for Save Forecast Projections
+          logToConsole(`Save Forecast Projections - Response (Row ${i + 1}):\n${JSON.stringify(projectionRes, null, 2)}`, 'info');
+          
+          if (projectionRes.success) {
+            logToConsole(`Row ${i + 1}: Successfully saved forecast projections for ${forecastData.ForecastId}`, 'success');
+            successCount++;
+          } else {
+            logToConsole(`Row ${i + 1}: Failed to save forecast projections for ${forecastData.ForecastId}: ${projectionRes.error || 'Unknown error'}`, 'error');
+            failCount++;
+            errors.push(`Row ${i + 1} (${forecastData.ForecastId}): Forecast saved but projections failed - ${projectionRes.error || 'Unknown error'}`);
+          }
         } else {
           logToConsole(`Row ${i + 1}: Failed to save forecast ${forecastData.ForecastId}: ${res.error || 'Unknown error'}`, 'error');
           failCount++;

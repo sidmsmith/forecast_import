@@ -239,6 +239,24 @@ export default async function handler(req, res) {
     }
   }
 
+  // === SAVE FORECAST PROJECTIONS ===
+  if (action === 'save-forecast-projections') {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: "No token" });
+    
+    const { projectionData } = req.body;
+    if (!projectionData) {
+      return res.json({ success: false, error: "No projection data provided" });
+    }
+
+    try {
+      const result = await apiCall('POST', '/ai-forecast/api/ai-forecast/manualForecastEvent/save', token, org, projectionData);
+      return res.json({ success: result.error ? false : true, result });
+    } catch (error) {
+      return res.json({ success: false, error: error.message });
+    }
+  }
+
   // === Need token ===
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: "No token" });
