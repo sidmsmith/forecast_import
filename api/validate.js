@@ -43,18 +43,36 @@ async function getToken(org) {
     password: PASSWORD
   });
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: 'Basic ' + Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64')
-    },
-    body
-  });
+  console.log(`[AUTH] Attempting authentication for ORG: ${org}`);
+  console.log(`[AUTH] URL: ${url}`);
+  console.log(`[AUTH] Username: ${username}`);
+  console.log(`[AUTH] AUTH_HOST: ${AUTH_HOST}`);
+  console.log(`[AUTH] CLIENT_ID: ${CLIENT_ID}`);
+  console.log(`[AUTH] CLIENT_SECRET set: ${!!CLIENT_SECRET}`);
 
-  if (!res.ok) return null;
-  const data = await res.json();
-  return data.access_token;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: 'Basic ' + Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64')
+      },
+      body
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`[AUTH] Failed with status ${res.status}: ${errorText}`);
+      return null;
+    }
+    
+    const data = await res.json();
+    console.log(`[AUTH] Success for ORG: ${org}`);
+    return data.access_token;
+  } catch (error) {
+    console.error(`[AUTH] Exception: ${error.message}`);
+    return null;
+  }
 }
 
 // API call wrapper
@@ -97,9 +115,9 @@ export default async function handler(req, res) {
     const token = await getToken(org);
     if (!token) {
       await sendHA("auth_failed", org);
-      return res.json({ success: false, error: "Auth failed" });
+      return res.json({ success: false, error: "Authentication failed. Please check Vercel logs for details." });
     }
-    await sendHA("auth_success", org);  // ← FIXED
+    await sendHA("auth_success", org);
     return res.json({ success: true, token });
   }
 
