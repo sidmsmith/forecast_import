@@ -485,6 +485,9 @@ if (forecastFileInput) {
       const extension = file.name.split('.').pop().toLowerCase();
       const fileType = extension === 'csv' ? 'CSV' : 'Excel';
       printFileContentsToConsole(forecastFileData, fileName, fileType, forecastFileHeader);
+      
+      // Clear the file input value so the same file can be reloaded
+      e.target.value = '';
     } catch (error) {
       // File parsing failed - show error and restore red shading
       console.error('Error parsing forecast file:', error);
@@ -765,6 +768,9 @@ if (locationFileInput) {
       const extension = file.name.split('.').pop().toLowerCase();
       const fileType = extension === 'csv' ? 'CSV' : 'Excel';
       printFileContentsToConsole(locationFileData, fileName, fileType, locationFileHeader);
+      
+      // Clear the file input value so the same file can be reloaded
+      e.target.value = '';
     } catch (error) {
       // File parsing failed - show error and restore red shading
       console.error('Error parsing location file:', error);
