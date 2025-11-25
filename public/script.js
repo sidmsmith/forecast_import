@@ -9,11 +9,12 @@ const themeList = document.getElementById('themeList');
 const urlParams = new URLSearchParams(window.location.search);
 const locationParam = urlParams.get('Location');
 const organizationParam = urlParams.get('Organization');
+const orgParam = urlParams.get('ORG'); // Also support ORG parameter
 const businessUnitParam = urlParams.get('BusinessUnit');
 
 // Store URL parameters for use
 const urlLocation = locationParam || null;
-const urlOrg = organizationParam || null;
+const urlOrg = organizationParam || orgParam || null; // Support both Organization and ORG
 const urlBusinessUnit = businessUnitParam || null;
 
 // Ensure ORG is blank on load (security) unless from URL
@@ -121,7 +122,7 @@ async function authenticate() {
   const org = orgInput.value.trim();
   if (!org) {
     status('ORG required', 'error');
-    return;
+    return false;
   }
 
   status('Authenticating...');
@@ -139,7 +140,7 @@ async function authenticate() {
     if (authSection) {
       authSection.style.display = 'block';
     }
-    return;
+    return false;
   }
 
   token = res.token;
@@ -159,6 +160,7 @@ async function authenticate() {
   if (consoleSection) {
     consoleSection.style.display = 'block';
   }
+  return true;
 }
 
 orgInput?.addEventListener('keypress', async e => {
@@ -166,7 +168,7 @@ orgInput?.addEventListener('keypress', async e => {
   await authenticate();
 });
 
-// Auto-authenticate if Organization parameter is provided in URL
+// Auto-authenticate if Organization or ORG parameter is provided in URL
 window.addEventListener('load', async () => {
   try {
     await fetch('/api/validate', {
@@ -178,11 +180,32 @@ window.addEventListener('load', async () => {
     console.error('App init failed', err);
   }
   
-  // Auto-authenticate if Organization parameter is provided in URL
+  // Auto-authenticate if Organization or ORG parameter is provided in URL
   if (urlOrg) {
     // Auto-authenticate (auth section will be hidden on success, shown on failure)
-    await authenticate();
+    // File and console sections will only show if auth succeeds
+    const authSuccess = await authenticate();
+    if (!authSuccess) {
+      // Auth failed - keep file and console sections hidden
+      if (fileSection) {
+        fileSection.style.display = 'none';
+      }
+      if (consoleSection) {
+        consoleSection.style.display = 'none';
+      }
+    }
   } else {
+    // No URL parameter - show auth section, hide file/console sections
+    const authSection = document.getElementById('authSection');
+    if (authSection) {
+      authSection.style.display = 'block';
+    }
+    if (fileSection) {
+      fileSection.style.display = 'none';
+    }
+    if (consoleSection) {
+      consoleSection.style.display = 'none';
+    }
     orgInput?.focus();
   }
 });
@@ -206,6 +229,13 @@ function setForecastFileStatus(text) {
   if (forecastFileStatus) {
     forecastFileStatus.textContent = text || '';
   }
+}
+
+// Helper function to check if first cell is a header (Item ID, ItemId, or Item_id)
+function isHeaderRow(firstCell) {
+  if (!firstCell) return false;
+  const normalized = String(firstCell).trim().toLowerCase();
+  return normalized === 'item id' || normalized === 'itemid' || normalized === 'item_id';
 }
 
 // Validate forecast file (simple validation - just check extension and if not empty)
@@ -258,10 +288,11 @@ async function validateForecastFile(file) {
       return { valid: false, error: 'File is empty or contains no data rows' };
     }
 
-    // Count data rows (excluding potential header)
-    const rowCount = rows.length;
+    // Check if first row is a header row (cell A1 contains Item ID, ItemId, or Item_id)
+    const hasHeader = rows.length > 0 && isHeaderRow(rows[0][0]);
+    const rowCount = hasHeader ? rows.length - 1 : rows.length;
 
-    return { valid: true, rowCount: rowCount };
+    return { valid: true, rowCount: rowCount, hasHeader: hasHeader };
   } catch (error) {
     return { valid: false, error: `Error reading file: ${error.message}` };
   }
@@ -294,8 +325,8 @@ async function parseForecastFile(file) {
       }
       result.push(current.trim());
       
-      // Check if first row is a header (optional - just for counting)
-      if (index === 0 && result.length > 0 && result[0].toLowerCase().includes('header')) {
+      // Check if first row is a header row (cell A1 contains Item ID, ItemId, or Item_id)
+      if (index === 0 && result.length > 0 && isHeaderRow(result[0])) {
         headerDetected = true;
         return; // Skip header row
       }
@@ -312,8 +343,8 @@ async function parseForecastFile(file) {
     const excelRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
     excelRows.forEach((row, index) => {
       const rowArray = Array.isArray(row) ? row.map(cell => String(cell || '').trim()) : [];
-      // Check if first row is a header (optional)
-      if (index === 0 && rowArray.length > 0 && rowArray[0].toLowerCase().includes('header')) {
+      // Check if first row is a header row (cell A1 contains Item ID, ItemId, or Item_id)
+      if (index === 0 && rowArray.length > 0 && isHeaderRow(rowArray[0])) {
         headerDetected = true;
         return; // Skip header row
       }
@@ -392,6 +423,13 @@ if (forecastFileInput) {
           : `${itemCount} items loaded`
         : 'No data rows detected.';
       setForecastFileStatus(statusMessage);
+      
+      // Log to console
+      if (headerDetected) {
+        logToConsole(`Header row detected and skipped (${itemCount} data rows)`, 'info');
+      } else {
+        logToConsole(`${itemCount} items loaded from file`, 'success');
+      }
     } catch (error) {
       // File parsing failed - show error and restore red shading
       console.error('Error parsing forecast file:', error);
