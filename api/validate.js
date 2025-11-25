@@ -12,6 +12,12 @@ const CLIENT_SECRET = process.env.MANHATTAN_SECRET || "b4s8rgTyg55XYNun";
 const PASSWORD = process.env.MANHATTAN_PASSWORD || "N0$alenopay2o25!";
 const USERNAME_BASE = "rndadmin@"; // Forecast app uses rndadmin@ instead of sdtadmin@
 
+// Log which values are being used (for debugging)
+console.log(`[CONFIG] PASSWORD from env: ${!!process.env.MANHATTAN_PASSWORD}`);
+console.log(`[CONFIG] CLIENT_SECRET from env: ${!!process.env.MANHATTAN_SECRET}`);
+console.log(`[CONFIG] AUTH_HOST: ${AUTH_HOST}`);
+console.log(`[CONFIG] API_HOST: ${API_HOST}`);
+
 // Helper: send to HA
 async function sendHA(action, org, success = 0, fail = 0, total = 0) {
   console.log(`[HA] Sending: ${action} | Org: ${org}`);
@@ -41,22 +47,33 @@ async function getToken(org) {
   // Normalize org: trim and convert to lowercase
   const normalizedOrg = org.trim().toLowerCase();
   const username = `${USERNAME_BASE}${normalizedOrg}`;
-  const body = new URLSearchParams({
-    grant_type: 'password',
-    username,
-    password: PASSWORD
-  });
+  
+  // Manually construct body to ensure proper encoding of special characters
+  // URLSearchParams should handle this, but being explicit
+  const bodyParams = new URLSearchParams();
+  bodyParams.append('grant_type', 'password');
+  bodyParams.append('username', username);
+  bodyParams.append('password', PASSWORD);
+  const body = bodyParams;
 
   console.log(`[AUTH] Attempting authentication for ORG: ${org}`);
   console.log(`[AUTH] Normalized ORG: ${normalizedOrg}`);
   console.log(`[AUTH] URL: ${url}`);
   console.log(`[AUTH] Username: ${username}`);
   console.log(`[AUTH] Password length: ${PASSWORD ? PASSWORD.length : 0}`);
+  console.log(`[AUTH] Password first char: ${PASSWORD ? PASSWORD[0] : 'N/A'}`);
+  console.log(`[AUTH] Password last char: ${PASSWORD ? PASSWORD[PASSWORD.length - 1] : 'N/A'}`);
+  console.log(`[AUTH] Password contains $: ${PASSWORD ? PASSWORD.includes('$') : false}`);
+  console.log(`[AUTH] Password contains !: ${PASSWORD ? PASSWORD.includes('!') : false}`);
   console.log(`[AUTH] AUTH_HOST: ${AUTH_HOST}`);
   console.log(`[AUTH] CLIENT_ID: ${CLIENT_ID}`);
   console.log(`[AUTH] CLIENT_SECRET set: ${!!CLIENT_SECRET}`);
   console.log(`[AUTH] CLIENT_SECRET value: ${CLIENT_SECRET ? CLIENT_SECRET.substring(0, 4) + '...' : 'NOT SET'}`);
-  console.log(`[AUTH] Request body: ${body.toString().replace(/password=[^&]+/, 'password=***')}`);
+  
+  // Log the encoded body to verify encoding
+  const bodyString = body.toString();
+  console.log(`[AUTH] Request body (masked): ${bodyString.replace(/password=[^&]+/, 'password=***')}`);
+  console.log(`[AUTH] Username in body: ${bodyString.match(/username=([^&]+)/)?.[1] || 'NOT FOUND'}`);
 
   try {
     const res = await fetch(url, {
