@@ -6,6 +6,8 @@ const HA_WEBHOOK_URL = "http://sidmsmith.zapto.org:8123/api/webhook/manhattan_fo
 const AUTH_HOST = process.env.MANHATTAN_AUTH_HOST || "sales2-auth.omni.manh.com";
 const API_HOST = process.env.MANHATTAN_API_HOST || "sales2.omni.manh.com";
 const CLIENT_ID = "omnicomponent.1.0.0";
+// CLIENT_SECRET for sales2 environment
+// Set MANHATTAN_SECRET in Vercel environment variables, or it will use the fallback
 const CLIENT_SECRET = process.env.MANHATTAN_SECRET || "b4s8rgTyg55XYNun";
 const PASSWORD = process.env.MANHATTAN_PASSWORD || "N0$alenopay2o25!";
 const USERNAME_BASE = "rndadmin@"; // Forecast app uses rndadmin@ instead of sdtadmin@
