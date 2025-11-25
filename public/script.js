@@ -26,6 +26,7 @@ if (urlOrg) {
 
 let token = null;
 let forecastFileData = null; // Store parsed forecast file data
+let locationFileData = null; // Store parsed location file data
 
 // File section elements
 const fileSection = document.getElementById('fileSection');
@@ -34,6 +35,11 @@ const forecastFileDisplay = document.getElementById('forecast_file_display');
 const forecastFileLoadBtn = document.getElementById('forecastFileLoadBtn');
 const forecastFileStatus = document.getElementById('forecastFileStatus');
 const uploadForecastBtn = document.getElementById('uploadForecastBtn');
+const locationFileInput = document.getElementById('location_file');
+const locationFileDisplay = document.getElementById('location_file_display');
+const locationFileLoadBtn = document.getElementById('locationFileLoadBtn');
+const locationFileStatus = document.getElementById('locationFileStatus');
+const uploadLocationsBtn = document.getElementById('uploadLocationsBtn');
 const consoleSection = document.getElementById('consoleSection');
 const consoleEl = document.getElementById('console');
 
@@ -426,10 +432,15 @@ if (forecastFileInput) {
       
       // Log to console
       if (headerDetected) {
-        logToConsole(`Header row detected and skipped (${itemCount} data rows)`, 'info');
+        logToConsole(`Forecast file: Header row detected and skipped (${itemCount} data rows)`, 'info');
       } else {
-        logToConsole(`${itemCount} items loaded from file`, 'success');
+        logToConsole(`Forecast file: ${itemCount} items loaded from file`, 'success');
       }
+      
+      // Print file contents to console
+      const extension = file.name.split('.').pop().toLowerCase();
+      const fileType = extension === 'csv' ? 'CSV' : 'Excel';
+      printFileContentsToConsole(forecastFileData, fileName, fileType);
     } catch (error) {
       // File parsing failed - show error and restore red shading
       console.error('Error parsing forecast file:', error);
@@ -454,6 +465,157 @@ if (forecastFileInput) {
 if (forecastFileDisplay) {
   updateFileInputShading(forecastFileDisplay, true);
 }
+if (locationFileDisplay) {
+  updateFileInputShading(locationFileDisplay, true);
+}
+
+// Function to print file contents to console
+function printFileContentsToConsole(rows, fileName, fileType = 'CSV') {
+  if (!consoleEl || !rows || rows.length === 0) return;
+  
+  logToConsole(`\n=== ${fileName} (${fileType}) ===`, 'info');
+  logToConsole(`Total rows: ${rows.length}`, 'info');
+  logToConsole('---', 'info');
+  
+  // Print first 50 rows to avoid overwhelming the console
+  const maxRows = Math.min(50, rows.length);
+  for (let i = 0; i < maxRows; i++) {
+    const row = rows[i];
+    const rowStr = Array.isArray(row) ? row.join(', ') : String(row);
+    logToConsole(`Row ${i + 1}: ${rowStr}`, 'info');
+  }
+  
+  if (rows.length > maxRows) {
+    logToConsole(`... (${rows.length - maxRows} more rows)`, 'info');
+  }
+  logToConsole('=== End of file ===\n', 'info');
+}
+
+// Function to set location file status message
+function setLocationFileStatus(text) {
+  if (locationFileStatus) {
+    locationFileStatus.textContent = text || '';
+  }
+}
+
+// Validate location file (same as forecast file validation)
+async function validateLocationFile(file) {
+  if (!file) {
+    return { valid: false, error: 'No file selected' };
+  }
+
+  const extension = file.name.split('.').pop().toLowerCase();
+  if (!['csv', 'xls', 'xlsx'].includes(extension)) {
+    return { valid: false, error: 'File must be a CSV or Excel file (.csv, .xls, .xlsx)' };
+  }
+
+  try {
+    let rows = [];
+    
+    if (extension === 'csv') {
+      const text = await file.text();
+      rows = text.split(/\r?\n/).map(line => {
+        // Parse CSV line (handle quoted values)
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        result.push(current.trim());
+        return result;
+      }).filter(row => row.some(cell => cell.length > 0)); // Filter empty rows
+    } else {
+      // Excel file
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      rows = rows.map(row => Array.isArray(row) ? row.map(cell => String(cell || '').trim()) : []);
+      rows = rows.filter(row => row.some(cell => cell.length > 0)); // Filter empty rows
+    }
+
+    if (rows.length === 0) {
+      return { valid: false, error: 'File is empty or contains no data rows' };
+    }
+
+    // Check if first row is a header row (cell A1 contains Item ID, ItemId, or Item_id)
+    const hasHeader = rows.length > 0 && isHeaderRow(rows[0][0]);
+    const rowCount = hasHeader ? rows.length - 1 : rows.length;
+
+    return { valid: true, rowCount: rowCount, hasHeader: hasHeader };
+  } catch (error) {
+    return { valid: false, error: `Error reading file: ${error.message}` };
+  }
+}
+
+// Parse location file (same as forecast file parsing)
+async function parseLocationFile(file) {
+  const extension = file.name.split('.').pop().toLowerCase();
+  let rows = [];
+  let headerDetected = false;
+
+  if (extension === 'csv') {
+    const text = await file.text();
+    const lines = text.split(/\r?\n/);
+    lines.forEach((line, index) => {
+      // Parse CSV line (handle quoted values)
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          result.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      result.push(current.trim());
+      
+      // Check if first row is a header row (cell A1 contains Item ID, ItemId, or Item_id)
+      if (index === 0 && result.length > 0 && isHeaderRow(result[0])) {
+        headerDetected = true;
+        return; // Skip header row
+      }
+      if (result.some(cell => cell.length > 0)) {
+        rows.push(result);
+      }
+    });
+  } else {
+    // Excel file
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: 'array' });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const excelRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    excelRows.forEach((row, index) => {
+      const rowArray = Array.isArray(row) ? row.map(cell => String(cell || '').trim()) : [];
+      // Check if first row is a header row (cell A1 contains Item ID, ItemId, or Item_id)
+      if (index === 0 && rowArray.length > 0 && isHeaderRow(rowArray[0])) {
+        headerDetected = true;
+        return; // Skip header row
+      }
+      if (rowArray.some(cell => cell.length > 0)) {
+        rows.push(rowArray);
+      }
+    });
+  }
+
+  return { rows, headerDetected };
+}
 
 // Console logging function
 function logToConsole(message, type = 'info') {
@@ -464,9 +626,114 @@ function logToConsole(message, type = 'info') {
   consoleEl.scrollTop = consoleEl.scrollHeight;
 }
 
+// Location file picker button
+if (locationFileLoadBtn && locationFileInput) {
+  locationFileLoadBtn.addEventListener('click', () => {
+    locationFileInput.click();
+  });
+}
+
+// Location file change handler
+if (locationFileInput) {
+  locationFileInput.addEventListener('change', async (e) => {
+    if (!e.target.files.length) {
+      locationFileData = null;
+      setLocationFileStatus('');
+      if (locationFileDisplay) {
+        locationFileDisplay.value = '';
+        updateFileInputShading(locationFileDisplay, true);
+      }
+      return;
+    }
+    
+    const file = e.target.files[0];
+    const fileName = file.name;
+    
+    // Validate file format before loading
+    const validation = await validateLocationFile(file);
+    
+    if (!validation.valid) {
+      // Show error message
+      setLocationFileStatus('');
+      
+      if (locationFileDisplay) {
+        locationFileDisplay.value = '';
+        locationFileDisplay.removeAttribute('title');
+        // Restore red shading to indicate file needs to be loaded
+        updateFileInputShading(locationFileDisplay, true);
+      }
+      
+      // Clear location file data
+      locationFileData = null;
+      e.target.value = '';
+      alert(`Invalid file format: ${validation.error}`);
+      return;
+    }
+    
+    // File is valid, parse and store data
+    try {
+      const parseResult = await parseLocationFile(file);
+      locationFileData = parseResult.rows;
+      const headerDetected = parseResult.headerDetected;
+      
+      // Update display textbox - show only filename
+      if (locationFileDisplay) {
+        locationFileDisplay.value = fileName;
+        locationFileDisplay.title = fileName; // Tooltip shows filename on hover
+        // Remove red shading when file is loaded
+        updateFileInputShading(locationFileDisplay, false);
+      }
+      
+      // Use validation count if available, otherwise use parsed rows count
+      const itemCount = validation.rowCount || locationFileData.length;
+      const statusMessage = itemCount > 0
+        ? headerDetected
+          ? `${itemCount} items loaded (header row detected and skipped)`
+          : `${itemCount} items loaded`
+        : 'No data rows detected.';
+      setLocationFileStatus(statusMessage);
+      
+      // Log to console
+      if (headerDetected) {
+        logToConsole(`Location file: Header row detected and skipped (${itemCount} data rows)`, 'info');
+      } else {
+        logToConsole(`Location file: ${itemCount} items loaded from file`, 'success');
+      }
+      
+      // Print file contents to console
+      const extension = file.name.split('.').pop().toLowerCase();
+      const fileType = extension === 'csv' ? 'CSV' : 'Excel';
+      printFileContentsToConsole(locationFileData, fileName, fileType);
+    } catch (error) {
+      // File parsing failed - show error and restore red shading
+      console.error('Error parsing location file:', error);
+      setLocationFileStatus('');
+      
+      if (locationFileDisplay) {
+        locationFileDisplay.value = '';
+        locationFileDisplay.removeAttribute('title');
+        // Restore red shading to indicate file needs to be loaded
+        updateFileInputShading(locationFileDisplay, true);
+      }
+      
+      // Clear location file data
+      locationFileData = null;
+      e.target.value = '';
+      alert(`Error loading file: ${error.message || 'Failed to parse file. Please ensure the file is a valid CSV or Excel file.'}`);
+    }
+  });
+}
+
 // Upload Forecast button handler
 if (uploadForecastBtn) {
   uploadForecastBtn.addEventListener('click', () => {
     logToConsole('Upload Forecast button clicked', 'info');
+  });
+}
+
+// Upload Locations button handler
+if (uploadLocationsBtn) {
+  uploadLocationsBtn.addEventListener('click', () => {
+    logToConsole('Upload Locations button clicked', 'info');
   });
 }
