@@ -207,6 +207,9 @@ window.addEventListener('load', async () => {
       if (consoleSection) {
         consoleSection.style.display = 'none';
       }
+      if (consoleToggleContainer) {
+        consoleToggleContainer.style.display = 'none';
+      }
     }
   } else {
     // No URL parameter - show auth section, hide file/console sections
@@ -219,6 +222,9 @@ window.addEventListener('load', async () => {
     }
     if (consoleSection) {
       consoleSection.style.display = 'none';
+    }
+    if (consoleToggleContainer) {
+      consoleToggleContainer.style.display = 'none';
     }
     orgInput?.focus();
   }
