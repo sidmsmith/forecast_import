@@ -1,13 +1,14 @@
 // api/validate.js
 import fetch from 'node-fetch';
 
-const HA_WEBHOOK_URL = "http://sidmsmith.zapto.org:8123/api/webhook/manhattan_lpnlock";
-const AUTH_HOST = "salep-auth.sce.manh.com";
-const API_HOST = "salep.sce.manh.com";
+const HA_WEBHOOK_URL = "http://sidmsmith.zapto.org:8123/api/webhook/manhattan_forecastimport";
+// Forecast app uses sales2 environment (different from other apps)
+const AUTH_HOST = process.env.MANHATTAN_AUTH_HOST || "sales2-auth.omni.manh.com";
+const API_HOST = process.env.MANHATTAN_API_HOST || "sales2.omni.manh.com";
 const CLIENT_ID = "omnicomponent.1.0.0";
-const CLIENT_SECRET = "b4s8rgTyg55XYNun";
-const PASSWORD = "Blu3sk!es2300";
-const USERNAME_BASE = "sdtadmin@";
+const CLIENT_SECRET = process.env.MANHATTAN_SECRET || "b4s8rgTyg55XYNun";
+const PASSWORD = process.env.MANHATTAN_PASSWORD || "N0$alenopay2o25!";
+const USERNAME_BASE = "rndadmin@"; // Forecast app uses rndadmin@ instead of sdtadmin@
 
 // Helper: send to HA
 async function sendHA(action, org, success = 0, fail = 0, total = 0) {
