@@ -38,7 +38,9 @@ async function sendHA(action, org, success = 0, fail = 0, total = 0) {
 // Get OAuth token
 async function getToken(org) {
   const url = `https://${AUTH_HOST}/oauth/token`;
-  const username = `${USERNAME_BASE}${org.toLowerCase()}`;
+  // Normalize org: trim and convert to lowercase
+  const normalizedOrg = org.trim().toLowerCase();
+  const username = `${USERNAME_BASE}${normalizedOrg}`;
   const body = new URLSearchParams({
     grant_type: 'password',
     username,
@@ -46,11 +48,15 @@ async function getToken(org) {
   });
 
   console.log(`[AUTH] Attempting authentication for ORG: ${org}`);
+  console.log(`[AUTH] Normalized ORG: ${normalizedOrg}`);
   console.log(`[AUTH] URL: ${url}`);
   console.log(`[AUTH] Username: ${username}`);
+  console.log(`[AUTH] Password length: ${PASSWORD ? PASSWORD.length : 0}`);
   console.log(`[AUTH] AUTH_HOST: ${AUTH_HOST}`);
   console.log(`[AUTH] CLIENT_ID: ${CLIENT_ID}`);
   console.log(`[AUTH] CLIENT_SECRET set: ${!!CLIENT_SECRET}`);
+  console.log(`[AUTH] CLIENT_SECRET value: ${CLIENT_SECRET ? CLIENT_SECRET.substring(0, 4) + '...' : 'NOT SET'}`);
+  console.log(`[AUTH] Request body: ${body.toString().replace(/password=[^&]+/, 'password=***')}`);
 
   try {
     const res = await fetch(url, {
@@ -65,6 +71,7 @@ async function getToken(org) {
     if (!res.ok) {
       const errorText = await res.text();
       console.error(`[AUTH] Failed with status ${res.status}: ${errorText}`);
+      console.error(`[AUTH] Response headers:`, JSON.stringify(Object.fromEntries(res.headers.entries())));
       return null;
     }
     
@@ -73,6 +80,7 @@ async function getToken(org) {
     return data.access_token;
   } catch (error) {
     console.error(`[AUTH] Exception: ${error.message}`);
+    console.error(`[AUTH] Stack: ${error.stack}`);
     return null;
   }
 }
