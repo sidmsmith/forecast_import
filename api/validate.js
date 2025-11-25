@@ -44,9 +44,15 @@ async function sendHA(action, org, success = 0, fail = 0, total = 0) {
 // Get OAuth token
 async function getToken(org) {
   const url = `https://${AUTH_HOST}/oauth/token`;
-  // Normalize org: trim and convert to lowercase
+  // Try both lowercase and original case for org
+  // Postman shows orgid as "SDT-TEST" but username as "rndadmin@sdt-test"
   const normalizedOrg = org.trim().toLowerCase();
   const username = `${USERNAME_BASE}${normalizedOrg}`;
+  
+  // Also try with original case (for debugging)
+  const usernameOriginalCase = `${USERNAME_BASE}${org.trim()}`;
+  console.log(`[AUTH] Will try username: ${username}`);
+  console.log(`[AUTH] Alternative username (original case): ${usernameOriginalCase}`);
   
   // Manually construct body to ensure proper encoding of special characters
   // URLSearchParams should handle this, but being explicit
@@ -72,8 +78,23 @@ async function getToken(org) {
   
   // Log the encoded body to verify encoding
   const bodyString = body.toString();
+  const passwordMatch = bodyString.match(/password=([^&]+)/);
+  const encodedPassword = passwordMatch ? passwordMatch[1] : 'NOT FOUND';
   console.log(`[AUTH] Request body (masked): ${bodyString.replace(/password=[^&]+/, 'password=***')}`);
   console.log(`[AUTH] Username in body: ${bodyString.match(/username=([^&]+)/)?.[1] || 'NOT FOUND'}`);
+  console.log(`[AUTH] Password encoded length: ${encodedPassword.length}`);
+  console.log(`[AUTH] Password encoded first 10 chars: ${encodedPassword.substring(0, 10)}...`);
+  console.log(`[AUTH] Password encoded contains %24 (encoded $): ${encodedPassword.includes('%24')}`);
+  console.log(`[AUTH] Password encoded contains %21 (encoded !): ${encodedPassword.includes('%21')}`);
+  
+  // Also log the raw password characters for verification (masked)
+  const passwordChars = PASSWORD.split('').map((c, i) => {
+    if (i === 0 || i === PASSWORD.length - 1) return c;
+    if (c === '$') return '$';
+    if (c === '!') return '!';
+    return '*';
+  }).join('');
+  console.log(`[AUTH] Password pattern: ${passwordChars}`);
 
   try {
     const res = await fetch(url, {
