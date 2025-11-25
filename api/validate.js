@@ -203,6 +203,24 @@ export default async function handler(req, res) {
     return res.json({ codes });
   }
 
+  // === CREATE LOCATION ===
+  if (action === 'create-location') {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: "No token" });
+    
+    const { locationData } = req.body;
+    if (!locationData) {
+      return res.json({ success: false, error: "No location data provided" });
+    }
+
+    try {
+      const result = await apiCall('POST', '/itemlocation/api/itemlocation/location/save', token, org, locationData);
+      return res.json({ success: result.error ? false : true, result });
+    } catch (error) {
+      return res.json({ success: false, error: error.message });
+    }
+  }
+
   // === Need token ===
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: "No token" });

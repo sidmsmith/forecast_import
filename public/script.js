@@ -26,7 +26,9 @@ if (urlOrg) {
 
 let token = null;
 let forecastFileData = null; // Store parsed forecast file data
+let forecastFileHeader = null; // Store forecast file header row
 let locationFileData = null; // Store parsed location file data
+let locationFileHeader = null; // Store location file header row
 
 // File section elements
 const fileSection = document.getElementById('fileSection');
@@ -244,6 +246,13 @@ function isHeaderRow(firstCell) {
   return normalized === 'item id' || normalized === 'itemid' || normalized === 'item_id';
 }
 
+// Helper function to check if first cell is a location header (Location ID, LocationId, or Location_id)
+function isLocationHeaderRow(firstCell) {
+  if (!firstCell) return false;
+  const normalized = String(firstCell).trim().toLowerCase();
+  return normalized === 'location id' || normalized === 'locationid' || normalized === 'location_id';
+}
+
 // Validate forecast file (simple validation - just check extension and if not empty)
 async function validateForecastFile(file) {
   if (!file) {
@@ -309,6 +318,7 @@ async function parseForecastFile(file) {
   const extension = file.name.split('.').pop().toLowerCase();
   let rows = [];
   let headerDetected = false;
+  let headerRow = null;
 
   if (extension === 'csv') {
     const text = await file.text();
@@ -334,7 +344,8 @@ async function parseForecastFile(file) {
       // Check if first row is a header row (cell A1 contains Item ID, ItemId, or Item_id)
       if (index === 0 && result.length > 0 && isHeaderRow(result[0])) {
         headerDetected = true;
-        return; // Skip header row
+        headerRow = result; // Store header row
+        return; // Skip header row from data
       }
       if (result.some(cell => cell.length > 0)) {
         rows.push(result);
@@ -352,7 +363,8 @@ async function parseForecastFile(file) {
       // Check if first row is a header row (cell A1 contains Item ID, ItemId, or Item_id)
       if (index === 0 && rowArray.length > 0 && isHeaderRow(rowArray[0])) {
         headerDetected = true;
-        return; // Skip header row
+        headerRow = rowArray; // Store header row
+        return; // Skip header row from data
       }
       if (rowArray.some(cell => cell.length > 0)) {
         rows.push(rowArray);
@@ -360,7 +372,7 @@ async function parseForecastFile(file) {
     });
   }
 
-  return { rows, headerDetected };
+  return { rows, headerDetected, headerRow };
 }
 
 // Forecast file picker button
@@ -411,6 +423,7 @@ if (forecastFileInput) {
     try {
       const parseResult = await parseForecastFile(file);
       forecastFileData = parseResult.rows;
+      forecastFileHeader = parseResult.headerRow || null;
       const headerDetected = parseResult.headerDetected;
       
       // Update display textbox - show only filename
@@ -437,10 +450,10 @@ if (forecastFileInput) {
         logToConsole(`Forecast file: ${itemCount} items loaded from file`, 'success');
       }
       
-      // Print file contents to console
+      // Print file contents to console (including header)
       const extension = file.name.split('.').pop().toLowerCase();
       const fileType = extension === 'csv' ? 'CSV' : 'Excel';
-      printFileContentsToConsole(forecastFileData, fileName, fileType);
+      printFileContentsToConsole(forecastFileData, fileName, fileType, forecastFileHeader);
     } catch (error) {
       // File parsing failed - show error and restore red shading
       console.error('Error parsing forecast file:', error);
@@ -469,12 +482,22 @@ if (locationFileDisplay) {
   updateFileInputShading(locationFileDisplay, true);
 }
 
-// Function to print file contents to console
-function printFileContentsToConsole(rows, fileName, fileType = 'CSV') {
-  if (!consoleEl || !rows || rows.length === 0) return;
+// Function to print file contents to console (including header if present)
+function printFileContentsToConsole(rows, fileName, fileType = 'CSV', headerRow = null) {
+  if (!consoleEl) return;
   
   logToConsole(`\n=== ${fileName} (${fileType}) ===`, 'info');
-  logToConsole(`Total rows: ${rows.length}`, 'info');
+  
+  // Count data rows (excluding header)
+  const dataRowCount = headerRow ? rows.length : rows.length;
+  logToConsole(`Total rows: ${dataRowCount}`, 'info');
+  
+  if (headerRow) {
+    logToConsole('---', 'info');
+    const headerStr = Array.isArray(headerRow) ? headerRow.join(', ') : String(headerRow);
+    logToConsole(`Header: ${headerStr}`, 'info');
+  }
+  
   logToConsole('---', 'info');
   
   // Print first 50 rows to avoid overwhelming the console
@@ -498,7 +521,7 @@ function setLocationFileStatus(text) {
   }
 }
 
-// Validate location file (same as forecast file validation)
+// Validate location file (checks for LocationId header)
 async function validateLocationFile(file) {
   if (!file) {
     return { valid: false, error: 'No file selected' };
@@ -548,8 +571,8 @@ async function validateLocationFile(file) {
       return { valid: false, error: 'File is empty or contains no data rows' };
     }
 
-    // Check if first row is a header row (cell A1 contains Item ID, ItemId, or Item_id)
-    const hasHeader = rows.length > 0 && isHeaderRow(rows[0][0]);
+    // Check if first row is a header row (cell A1 contains Location ID, LocationId, or Location_id)
+    const hasHeader = rows.length > 0 && isLocationHeaderRow(rows[0][0]);
     const rowCount = hasHeader ? rows.length - 1 : rows.length;
 
     return { valid: true, rowCount: rowCount, hasHeader: hasHeader };
@@ -558,11 +581,12 @@ async function validateLocationFile(file) {
   }
 }
 
-// Parse location file (same as forecast file parsing)
+// Parse location file (checks for LocationId header)
 async function parseLocationFile(file) {
   const extension = file.name.split('.').pop().toLowerCase();
   let rows = [];
   let headerDetected = false;
+  let headerRow = null;
 
   if (extension === 'csv') {
     const text = await file.text();
@@ -585,10 +609,11 @@ async function parseLocationFile(file) {
       }
       result.push(current.trim());
       
-      // Check if first row is a header row (cell A1 contains Item ID, ItemId, or Item_id)
-      if (index === 0 && result.length > 0 && isHeaderRow(result[0])) {
+      // Check if first row is a header row (cell A1 contains Location ID, LocationId, or Location_id)
+      if (index === 0 && result.length > 0 && isLocationHeaderRow(result[0])) {
         headerDetected = true;
-        return; // Skip header row
+        headerRow = result; // Store header row
+        return; // Skip header row from data
       }
       if (result.some(cell => cell.length > 0)) {
         rows.push(result);
@@ -603,10 +628,11 @@ async function parseLocationFile(file) {
     const excelRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
     excelRows.forEach((row, index) => {
       const rowArray = Array.isArray(row) ? row.map(cell => String(cell || '').trim()) : [];
-      // Check if first row is a header row (cell A1 contains Item ID, ItemId, or Item_id)
-      if (index === 0 && rowArray.length > 0 && isHeaderRow(rowArray[0])) {
+      // Check if first row is a header row (cell A1 contains Location ID, LocationId, or Location_id)
+      if (index === 0 && rowArray.length > 0 && isLocationHeaderRow(rowArray[0])) {
         headerDetected = true;
-        return; // Skip header row
+        headerRow = rowArray; // Store header row
+        return; // Skip header row from data
       }
       if (rowArray.some(cell => cell.length > 0)) {
         rows.push(rowArray);
@@ -614,7 +640,7 @@ async function parseLocationFile(file) {
     });
   }
 
-  return { rows, headerDetected };
+  return { rows, headerDetected, headerRow };
 }
 
 // Console logging function
@@ -674,6 +700,7 @@ if (locationFileInput) {
     try {
       const parseResult = await parseLocationFile(file);
       locationFileData = parseResult.rows;
+      locationFileHeader = parseResult.headerRow || null;
       const headerDetected = parseResult.headerDetected;
       
       // Update display textbox - show only filename
@@ -700,10 +727,10 @@ if (locationFileInput) {
         logToConsole(`Location file: ${itemCount} items loaded from file`, 'success');
       }
       
-      // Print file contents to console
+      // Print file contents to console (including header)
       const extension = file.name.split('.').pop().toLowerCase();
       const fileType = extension === 'csv' ? 'CSV' : 'Excel';
-      printFileContentsToConsole(locationFileData, fileName, fileType);
+      printFileContentsToConsole(locationFileData, fileName, fileType, locationFileHeader);
     } catch (error) {
       // File parsing failed - show error and restore red shading
       console.error('Error parsing location file:', error);
@@ -731,9 +758,150 @@ if (uploadForecastBtn) {
   });
 }
 
+// Helper function to map CSV row to location API format
+function mapLocationRowToAPI(row, headerRow) {
+  // If we have a header row, map by column names
+  // Otherwise, assume standard order: LocationId, LocationName, Description, LocationType, PrimaryDC, Region, District, Address fields
+  let locationData = {};
+  
+  if (headerRow && headerRow.length > 0) {
+    // Map by header names
+    const headerMap = {};
+    headerRow.forEach((header, index) => {
+      const normalized = String(header).trim().toLowerCase();
+      headerMap[normalized] = index;
+    });
+    
+    // Map fields based on header
+    const getValue = (fieldNames) => {
+      for (const fieldName of fieldNames) {
+        const index = headerMap[fieldName.toLowerCase()];
+        if (index !== undefined && row[index] !== undefined) {
+          return String(row[index]).trim();
+        }
+      }
+      return '';
+    };
+    
+    locationData.LocationId = getValue(['LocationId', 'Location ID', 'Location_id', 'locationid']);
+    locationData.LocationName = getValue(['LocationName', 'Location Name', 'Location_name', 'locationname']);
+    locationData.Description = getValue(['Description', 'description']);
+    locationData.LocationType = getValue(['LocationType', 'Location Type', 'Location_type', 'locationtype']);
+    locationData.PrimaryDC = getValue(['PrimaryDC', 'Primary DC', 'Primary_dc', 'primarydc']);
+    locationData.Region = getValue(['Region', 'region']);
+    locationData.District = getValue(['District', 'district']);
+    
+    // Address fields
+    locationData.Address = {
+      FirstName: getValue(['FirstName', 'First Name', 'First_name', 'firstname', 'Address.FirstName']),
+      LastName: getValue(['LastName', 'Last Name', 'Last_name', 'lastname', 'Address.LastName']),
+      Address1: getValue(['Address1', 'Address 1', 'Address_1', 'address1', 'Address.Address1']),
+      City: getValue(['City', 'city', 'Address.City']),
+      State: getValue(['State', 'state', 'Address.State']),
+      PostalCode: getValue(['PostalCode', 'Postal Code', 'Postal_code', 'postalcode', 'Zip', 'zip', 'Address.PostalCode']),
+      Country: getValue(['Country', 'country', 'Address.Country']),
+      Phone: getValue(['Phone', 'phone', 'Address.Phone']),
+      Email: getValue(['Email', 'email', 'Address.Email'])
+    };
+  } else {
+    // Assume standard order (first 7 columns, then address fields)
+    locationData.LocationId = row[0] || '';
+    locationData.LocationName = row[1] || '';
+    locationData.Description = row[2] || '';
+    locationData.LocationType = row[3] || '';
+    locationData.PrimaryDC = row[4] || '';
+    locationData.Region = row[5] || '';
+    locationData.District = row[6] || '';
+    locationData.Address = {
+      FirstName: row[7] || '',
+      LastName: row[8] || '',
+      Address1: row[9] || '',
+      City: row[10] || '',
+      State: row[11] || '',
+      PostalCode: row[12] || '',
+      Country: row[13] || '',
+      Phone: row[14] || '',
+      Email: row[15] || ''
+    };
+  }
+  
+  return locationData;
+}
+
 // Upload Locations button handler
 if (uploadLocationsBtn) {
-  uploadLocationsBtn.addEventListener('click', () => {
-    logToConsole('Upload Locations button clicked', 'info');
+  uploadLocationsBtn.addEventListener('click', async () => {
+    if (!locationFileData || locationFileData.length === 0) {
+      logToConsole('Error: No location file loaded', 'error');
+      status('Please load a location file first', 'error');
+      return;
+    }
+    
+    if (!token) {
+      logToConsole('Error: Not authenticated', 'error');
+      status('Please authenticate first', 'error');
+      return;
+    }
+    
+    const org = orgInput.value.trim();
+    if (!org) {
+      logToConsole('Error: No ORG specified', 'error');
+      status('ORG required', 'error');
+      return;
+    }
+    
+    logToConsole(`Starting location upload for ${locationFileData.length} locations...`, 'info');
+    status('Uploading locations...', 'info');
+    
+    let successCount = 0;
+    let failCount = 0;
+    const errors = [];
+    
+    // Process each location
+    for (let i = 0; i < locationFileData.length; i++) {
+      const row = locationFileData[i];
+      try {
+        const locationData = mapLocationRowToAPI(row, locationFileHeader);
+        
+        if (!locationData.LocationId) {
+          logToConsole(`Row ${i + 1}: Skipped - missing LocationId`, 'warning');
+          failCount++;
+          errors.push(`Row ${i + 1}: Missing LocationId`);
+          continue;
+        }
+        
+        logToConsole(`Row ${i + 1}: Creating location ${locationData.LocationId}...`, 'info');
+        
+        const res = await api('create-location', { org, locationData });
+        
+        if (res.success) {
+          logToConsole(`Row ${i + 1}: Successfully created location ${locationData.LocationId}`, 'success');
+          successCount++;
+        } else {
+          logToConsole(`Row ${i + 1}: Failed to create location ${locationData.LocationId}: ${res.error || 'Unknown error'}`, 'error');
+          failCount++;
+          errors.push(`Row ${i + 1} (${locationData.LocationId}): ${res.error || 'Unknown error'}`);
+        }
+      } catch (error) {
+        logToConsole(`Row ${i + 1}: Error - ${error.message}`, 'error');
+        failCount++;
+        errors.push(`Row ${i + 1}: ${error.message}`);
+      }
+    }
+    
+    // Summary
+    logToConsole(`\n=== Upload Complete ===`, 'info');
+    logToConsole(`Success: ${successCount}`, 'success');
+    logToConsole(`Failed: ${failCount}`, failCount > 0 ? 'error' : 'info');
+    
+    if (errors.length > 0 && errors.length <= 10) {
+      logToConsole('Errors:', 'error');
+      errors.forEach(err => logToConsole(`  - ${err}`, 'error'));
+    } else if (errors.length > 10) {
+      logToConsole(`First 10 errors (${errors.length} total):`, 'error');
+      errors.slice(0, 10).forEach(err => logToConsole(`  - ${err}`, 'error'));
+    }
+    
+    status(`Upload complete: ${successCount} succeeded, ${failCount} failed`, successCount > 0 ? 'success' : 'error');
   });
 }

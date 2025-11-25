@@ -1,0 +1,285 @@
+{
+	"info": {
+		"_postman_id": "c7921e05-cba8-42cf-b842-01ba1796112d",
+		"name": "McKesson Med Surg SCP Sales Demo Collection",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "38954869",
+		"_collection_link": "https://mascp-sales-demo.postman.co/workspace/MASCP---Sales-Demo-Workspace~ad1bf0b3-f1e9-49b0-ad7a-0cf281a7c950/collection/38954869-c7921e05-cba8-42cf-b842-01ba1796112d?action=share&source=collection_link&creator=38954869"
+	},
+	"item": [
+		{
+			"name": "0 - Initialize",
+			"item": [
+				{
+					"name": "ParentOrg OAuth-RnDadmin",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.globals.unset(\"Bearer {{access_token_admin@rndorg}}\");",
+									"//postman.setEnvironmentVariable(\"RandomNumber\", \"K\"+ Math.floor((Math.random() * 9999) + 1));",
+									"",
+									"",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);\r",
+									"pm.environment.set(\"access_token_admin@rndorg\", jsonData.access_token);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{
+									"key": "username",
+									"value": "omnicomponent.1.0.0",
+									"type": "string"
+								},
+								{
+									"key": "password",
+									"value": "b4s8rgTyg55XYNun",
+									"type": "string"
+								},
+								{
+									"key": "saveHelperData",
+									"type": "any"
+								},
+								{
+									"key": "showPassword",
+									"value": false,
+									"type": "boolean"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic b21uaWNvbXBvbmVudC4xLjAuMDpiNHM4cmdUeWc1NVhZTnVu"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "username",
+									"value": "{{username}}",
+									"type": "text"
+								},
+								{
+									"key": "password",
+									"value": "{{password}}",
+									"type": "text"
+								},
+								{
+									"key": "grant_type",
+									"value": "password",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{authurl}}/oauth/token",
+							"host": [
+								"{{authurl}}"
+							],
+							"path": [
+								"oauth",
+								"token"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Location - DC, Store",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "bearer{{access_token_admin@rndorg}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"LocationId\": \"{{LocationId}}\",\n    \"LocationName\": \"{{LocationName}}\",\n    \"Description\": \"{{Description}}\",\n    \"LocationType\": \"{{LocationType}}\",\n    //\"LocationStatusId\": \"Active\",\n    \"PrimaryDC\": \"{{PrimaryDC}}\",\n    \"Region\": \"{{Region}}\",\n    \"District\": \"{{District}}\",\n    //\"ClimateId\": \"Cold\",\n    //\"StoreSizeId\": \"Large\",\n    \"Address\": {\n        \"FirstName\": \"{{Address.FirstName}}\",\n        \"LastName\": \"{{Address.LastName}}\",\n        \"Address1\": \"{{Address.Address1}}\",\n        \"City\": \"{{Address.City}}\",\n        \"State\": \"{{Address.State}}\",\n        \"PostalCode\": \"{{Address.PostalCode}}\",\n        \"Country\": \"{{Address.Country}}\",\n        \"Phone\": \"{{Address.Phone}}\",\n        \"Email\": \"{{Address.Email}}\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{url}}/itemlocation/api/itemlocation/location/save",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"itemlocation",
+								"api",
+								"itemlocation",
+								"location",
+								"save"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "ConfigId='AggregateAllocationMetricHierarchyId'",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Forecast",
+			"item": [
+				{
+					"name": "Save Forecast",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"var randomval = _.random(1000, 9999);",
+									"pm.environment.set(\"ILFCDCLocationId\", \"ESO_\"+ randomval);"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "bearer{{access_token_admin@rndorg}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"ForecastId\": \"{{Forecast ID}}\",\r\n    \"ForecastLevel\": {{Current Forecast}},\r\n    //\"MetricGroupId\": \"Default-Sales\",\r\n    \"CurrentForecast\": {{Current Forecast}},\r\n    \"ForecastFactors\": [\r\n        {\r\n            \"ForecastLevel\": {{Current Forecast}},\r\n            \"CurrentForecast\": {{Current Forecast}}\r\n        }\r\n    ]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/ai-forecast/api/ai-forecast/forecast/save",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ai-forecast",
+								"api",
+								"ai-forecast",
+								"forecast",
+								"save"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Save Forecast Projections",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"var randomval = _.random(1000, 9999);",
+									"pm.environment.set(\"ILFCDCLocationId\", \"ESO_\"+ randomval);"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "bearer{{access_token_admin@rndorg}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"ForecastId\": \"{{Forecast ID}}\",\r\n  \"PeriodStartDate\": \"{{Projection Start Date}}\",\r\n  \"CurrentForecast\": {{Current Forecast}},\r\n  \"ManualForecastEventType\":\"User\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/ai-forecast/api/ai-forecast/manualForecastEvent/save",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"ai-forecast",
+								"api",
+								"ai-forecast",
+								"manualForecastEvent",
+								"save"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
