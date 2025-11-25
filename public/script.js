@@ -44,6 +44,9 @@ const locationFileStatus = document.getElementById('locationFileStatus');
 const uploadLocationsBtn = document.getElementById('uploadLocationsBtn');
 const consoleSection = document.getElementById('consoleSection');
 const consoleEl = document.getElementById('console');
+const consoleToggleBtn = document.getElementById('consoleToggleBtn');
+const consoleToggleContainer = document.getElementById('consoleToggleContainer');
+const consoleCloseBtn = document.getElementById('consoleCloseBtn');
 
 // THEME DEFINITIONS
 const themes = {
@@ -144,6 +147,9 @@ async function authenticate() {
     if (consoleSection) {
       consoleSection.style.display = 'none';
     }
+    if (consoleToggleContainer) {
+      consoleToggleContainer.style.display = 'none';
+    }
     const authSection = document.getElementById('authSection');
     if (authSection) {
       authSection.style.display = 'block';
@@ -164,9 +170,9 @@ async function authenticate() {
   if (fileSection) {
     fileSection.style.display = 'block';
   }
-  // Show console section after authentication
-  if (consoleSection) {
-    consoleSection.style.display = 'block';
+  // Show console toggle button after authentication (console stays hidden by default)
+  if (consoleToggleContainer) {
+    consoleToggleContainer.style.display = 'block';
   }
   return true;
 }
