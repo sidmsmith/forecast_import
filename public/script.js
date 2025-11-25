@@ -716,19 +716,19 @@ if (locationFileInput) {
       }
       
       // Use validation count if available, otherwise use parsed rows count
-      const itemCount = validation.rowCount || locationFileData.length;
-      const statusMessage = itemCount > 0
+      const locationCount = validation.rowCount || locationFileData.length;
+      const statusMessage = locationCount > 0
         ? headerDetected
-          ? `${itemCount} items loaded (header row detected and skipped)`
-          : `${itemCount} items loaded`
+          ? `${locationCount} locations loaded (header row detected and skipped)`
+          : `${locationCount} locations loaded`
         : 'No data rows detected.';
       setLocationFileStatus(statusMessage);
       
       // Log to console
       if (headerDetected) {
-        logToConsole(`Location file: Header row detected and skipped (${itemCount} data rows)`, 'info');
+        logToConsole(`Location file: Header row detected and skipped (${locationCount} data rows)`, 'info');
       } else {
-        logToConsole(`Location file: ${itemCount} items loaded from file`, 'success');
+        logToConsole(`Location file: ${locationCount} locations loaded from file`, 'success');
       }
       
       // Print file contents to console (including header)
@@ -877,7 +877,14 @@ if (uploadLocationsBtn) {
         
         logToConsole(`Row ${i + 1}: Creating location ${locationData.LocationId}...`, 'info');
         
-        const res = await api('create-location', { org, locationData });
+        // Log the raw JSON payload
+        const payload = { org, locationData };
+        logToConsole(`Request Payload (Row ${i + 1}):\n${JSON.stringify(payload, null, 2)}`, 'info');
+        
+        const res = await api('create-location', payload);
+        
+        // Log the raw response
+        logToConsole(`Response (Row ${i + 1}):\n${JSON.stringify(res, null, 2)}`, 'info');
         
         if (res.success) {
           logToConsole(`Row ${i + 1}: Successfully created location ${locationData.LocationId}`, 'success');
