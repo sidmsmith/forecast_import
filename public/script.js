@@ -758,8 +758,12 @@ if (locationFileInput) {
 
 // Helper function to map CSV row to forecast API format
 function mapForecastRowToAPI(row, headerRow) {
-  // If we have a header row, map by column names
-  // Otherwise, assume standard order: ForecastId, ForecastLevel, CurrentForecast
+  // Postman collection fields:
+  // - ForecastId: "{{Forecast ID}}" (string)
+  // - ForecastLevel: {{Current Forecast}} (number, same as CurrentForecast)
+  // - CurrentForecast: {{Current Forecast}} (number)
+  // - ForecastFactors: array with ForecastLevel and CurrentForecast (both use {{Current Forecast}})
+  
   let forecastData = {};
   
   if (headerRow && headerRow.length > 0) {
@@ -787,23 +791,34 @@ function mapForecastRowToAPI(row, headerRow) {
       return isNaN(num) ? 0 : num;
     };
     
-    forecastData.ForecastId = getValue(['ForecastId', 'Forecast ID', 'Forecast_id', 'forecastid', 'ItemId', 'Item ID', 'Item_id', 'itemid']);
-    forecastData.CurrentForecast = getNumberValue(['CurrentForecast', 'Current Forecast', 'Current_forecast', 'currentforecast']);
-    // ForecastLevel should use the same value as CurrentForecast (per Postman collection)
+    // ForecastId: Map from "Forecast ID" or "Item ID" variations
+    forecastData.ForecastId = getValue([
+      'Forecast ID', 'ForecastId', 'Forecast_id', 'forecastid', 'forecast id',
+      'Item ID', 'ItemId', 'Item_id', 'itemid', 'item id',
+      'ForecastID', 'ItemID'
+    ]);
+    
+    // CurrentForecast: Map from "Current Forecast" variations
+    forecastData.CurrentForecast = getNumberValue([
+      'Current Forecast', 'CurrentForecast', 'Current_forecast', 'currentforecast', 'current forecast',
+      'CurrentForecast', 'Forecast', 'forecast'
+    ]);
+    
+    // ForecastLevel: Uses the same value as CurrentForecast (per Postman: {{Current Forecast}})
     forecastData.ForecastLevel = forecastData.CurrentForecast;
   } else {
-    // Assume standard order: ForecastId, CurrentForecast (ForecastLevel uses same value)
+    // Assume standard order: ForecastId (col 0), CurrentForecast (col 1)
     forecastData.ForecastId = row[0] || '';
     forecastData.CurrentForecast = parseFloat(row[1]) || 0;
-    // ForecastLevel should use the same value as CurrentForecast (per Postman collection)
+    // ForecastLevel: Uses the same value as CurrentForecast (per Postman: {{Current Forecast}})
     forecastData.ForecastLevel = forecastData.CurrentForecast;
   }
   
-  // Build ForecastFactors array
+  // Build ForecastFactors array (both fields use CurrentForecast value per Postman)
   forecastData.ForecastFactors = [
     {
-      ForecastLevel: forecastData.CurrentForecast, // Uses CurrentForecast value
-      CurrentForecast: forecastData.CurrentForecast
+      ForecastLevel: forecastData.CurrentForecast, // Uses CurrentForecast value ({{Current Forecast}})
+      CurrentForecast: forecastData.CurrentForecast  // Uses CurrentForecast value ({{Current Forecast}})
     }
   ];
   
@@ -812,11 +827,16 @@ function mapForecastRowToAPI(row, headerRow) {
 
 // Helper function to map CSV row to forecast projection API format
 function mapForecastProjectionToAPI(row, headerRow, forecastData) {
-  // Uses the same forecastData but adds PeriodStartDate and ManualForecastEventType
+  // Postman collection fields:
+  // - ForecastId: "{{Forecast ID}}" (string, reuses from forecastData)
+  // - PeriodStartDate: "{{Projection Start Date}}" (string)
+  // - CurrentForecast: {{Current Forecast}} (number, reuses from forecastData)
+  // - ManualForecastEventType: "User" (hardcoded)
+  
   let projectionData = {
-    ForecastId: forecastData.ForecastId,
-    CurrentForecast: forecastData.CurrentForecast,
-    ManualForecastEventType: 'User'
+    ForecastId: forecastData.ForecastId,  // Reuses ForecastId from forecastData
+    CurrentForecast: forecastData.CurrentForecast,  // Reuses CurrentForecast from forecastData
+    ManualForecastEventType: 'User'  // Hardcoded as per Postman
   };
   
   // Try to get PeriodStartDate from the row
@@ -837,10 +857,16 @@ function mapForecastProjectionToAPI(row, headerRow, forecastData) {
       return '';
     };
     
-    projectionData.PeriodStartDate = getValue(['PeriodStartDate', 'Period Start Date', 'Period_start_date', 'periodstartdate', 'StartDate', 'Start Date', 'startdate']);
+    // PeriodStartDate: Map from "Projection Start Date" variations
+    projectionData.PeriodStartDate = getValue([
+      'Projection Start Date', 'PeriodStartDate', 'Period Start Date', 'Period_start_date',
+      'periodstartdate', 'projection start date', 'projectionstartdate',
+      'StartDate', 'Start Date', 'startdate', 'start date',
+      'PeriodStart', 'Period Start', 'periodstart', 'period start'
+    ]);
   } else {
-    // Assume PeriodStartDate is in column 3 (index 3) if available
-    projectionData.PeriodStartDate = row[3] || '';
+    // Assume PeriodStartDate is in column 2 (index 2) if available (after ForecastId and CurrentForecast)
+    projectionData.PeriodStartDate = row[2] || '';
   }
   
   // If no PeriodStartDate found, use today's date as default
