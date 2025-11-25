@@ -230,6 +230,24 @@ window.addEventListener('load', async () => {
   }
 });
 
+// Console toggle functionality
+if (consoleToggleBtn) {
+  consoleToggleBtn.addEventListener('click', () => {
+    if (consoleSection) {
+      const isHidden = consoleSection.style.display === 'none' || !consoleSection.style.display;
+      consoleSection.style.display = isHidden ? 'block' : 'none';
+    }
+  });
+}
+
+if (consoleCloseBtn) {
+  consoleCloseBtn.addEventListener('click', () => {
+    if (consoleSection) {
+      consoleSection.style.display = 'none';
+    }
+  });
+}
+
 // Helper function to update red shading on file input textbox
 function updateFileInputShading(element, isEmpty) {
   if (!element) return;
