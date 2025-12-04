@@ -1,7 +1,6 @@
 // public/script.js
 const orgInput = document.getElementById('org');
-const mainUI = document.getElementById('mainUI');
-const workspace = document.getElementById('workspace');
+const fileSection = document.getElementById('fileSection');
 const statusEl = document.getElementById('status');
 const themeSelectorBtn = document.getElementById('themeSelectorBtn');
 const themeModal = new bootstrap.Modal(document.getElementById('themeModal'));
@@ -112,8 +111,7 @@ async function authenticate() {
   const org = orgInput.value.trim();
   if (!org) {
     status('ORG required', 'error');
-    if (mainUI?.style) mainUI.style.display = 'none';
-    workspace?.classList.remove('unlocked');
+    if (fileSection?.style) fileSection.style.display = 'none';
     return;
   }
 
@@ -129,8 +127,7 @@ async function authenticate() {
   const res = await api('auth', { org });
   if (!res.success) {
     status(res.error || 'Auth failed', 'error');
-    if (mainUI?.style) mainUI.style.display = 'none';
-    workspace?.classList.remove('unlocked');
+    if (fileSection?.style) fileSection.style.display = 'none';
     
     // Track auth failure in Statsig
     if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
@@ -145,8 +142,7 @@ async function authenticate() {
 
   token = res.token;
   status(`Authenticated as ${org}`, 'success');
-  if (mainUI?.style) mainUI.style.display = 'block';
-  workspace?.classList.add('unlocked');
+  if (fileSection?.style) fileSection.style.display = 'block';
   
   // Track auth success in Statsig
   if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
