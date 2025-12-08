@@ -1076,7 +1076,6 @@ if (uploadForecastBtn) {
     }
     
     // Track upload completion
-    const forecastFileName = forecastFileDisplay ? forecastFileDisplay.value : 'unknown';
     if (failCount > 0 && successCount === 0) {
       await trackEvent('upload_forecast_failed', {
         org: org || 'unknown',
@@ -1257,7 +1256,6 @@ if (uploadLocationsBtn) {
     }
     
     // Track upload completion
-    const locationFileName = locationFileDisplay ? locationFileDisplay.value : 'unknown';
     if (failCount > 0 && successCount === 0) {
       await trackEvent('upload_locations_failed', {
         org: org || 'unknown',
