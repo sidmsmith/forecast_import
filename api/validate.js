@@ -5,7 +5,7 @@ import fetch from 'node-fetch';
 const HA_WEBHOOK_URL = process.env.HA_WEBHOOK_URL || "http://sidmsmith.zapto.org:8123/api/webhook/manhattan_app_usage";
 const HA_HEADERS = { "Content-Type": "application/json" };
 const APP_NAME = "Import Forecast";
-const APP_VERSION = "0.1.11"; // Match version in index.html title
+const APP_VERSION = "0.2.0"; // Match version in index.html title
 
 // Forecast app uses sales2 environment (different from other apps)
 const AUTH_HOST = process.env.MANHATTAN_AUTH_HOST || "sales2-auth.omni.manh.com";
