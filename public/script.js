@@ -290,14 +290,14 @@ async function validateForecastFile(file) {
   }
 
   const extension = file.name.split('.').pop().toLowerCase();
-  if (!['csv', 'xls', 'xlsx'].includes(extension)) {
-    return { valid: false, error: 'File must be a CSV or Excel file (.csv, .xls, .xlsx)' };
+  if (!['csv', 'xls', 'xlsx', 'txt'].includes(extension)) {
+    return { valid: false, error: 'File must be a CSV, Excel, or TXT file (.csv, .xls, .xlsx, .txt)' };
   }
 
   try {
     let rows = [];
     
-    if (extension === 'csv') {
+    if (extension === 'csv' || extension === 'txt') {
       const text = await file.text();
       rows = text.split(/\r?\n/).map(line => {
         // Parse CSV line (handle quoted values)
@@ -483,7 +483,7 @@ if (forecastFileInput) {
       
       // Print file contents to console (including header)
       const extension = file.name.split('.').pop().toLowerCase();
-      const fileType = extension === 'csv' ? 'CSV' : 'Excel';
+      const fileType = extension === 'csv' || extension === 'txt' ? (extension === 'txt' ? 'TXT' : 'CSV') : 'Excel';
       printFileContentsToConsole(forecastFileData, fileName, fileType, forecastFileHeader);
       
       // Clear the file input value so the same file can be reloaded
@@ -504,7 +504,7 @@ if (forecastFileInput) {
       forecastFileData = null;
       forecastFileHeader = null;
       e.target.value = '';
-      alert(`Error loading file: ${error.message || 'Failed to parse file. Please ensure the file is a valid CSV or Excel file.'}`);
+      alert(`Error loading file: ${error.message || 'Failed to parse file. Please ensure the file is a valid CSV, Excel, or TXT file.'}`);
     }
   });
 }
@@ -563,14 +563,14 @@ async function validateLocationFile(file) {
   }
 
   const extension = file.name.split('.').pop().toLowerCase();
-  if (!['csv', 'xls', 'xlsx'].includes(extension)) {
-    return { valid: false, error: 'File must be a CSV or Excel file (.csv, .xls, .xlsx)' };
+  if (!['csv', 'xls', 'xlsx', 'txt'].includes(extension)) {
+    return { valid: false, error: 'File must be a CSV, Excel, or TXT file (.csv, .xls, .xlsx, .txt)' };
   }
 
   try {
     let rows = [];
     
-    if (extension === 'csv') {
+    if (extension === 'csv' || extension === 'txt') {
       const text = await file.text();
       rows = text.split(/\r?\n/).map(line => {
         // Parse CSV line (handle quoted values)
@@ -766,7 +766,7 @@ if (locationFileInput) {
       
       // Print file contents to console (including header)
       const extension = file.name.split('.').pop().toLowerCase();
-      const fileType = extension === 'csv' ? 'CSV' : 'Excel';
+      const fileType = extension === 'csv' || extension === 'txt' ? (extension === 'txt' ? 'TXT' : 'CSV') : 'Excel';
       printFileContentsToConsole(locationFileData, fileName, fileType, locationFileHeader);
       
       // Clear the file input value so the same file can be reloaded
@@ -787,7 +787,7 @@ if (locationFileInput) {
       locationFileData = null;
       locationFileHeader = null;
       e.target.value = '';
-      alert(`Error loading file: ${error.message || 'Failed to parse file. Please ensure the file is a valid CSV or Excel file.'}`);
+      alert(`Error loading file: ${error.message || 'Failed to parse file. Please ensure the file is a valid CSV, Excel, or TXT file.'}`);
     }
   });
 }

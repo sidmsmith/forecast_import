@@ -237,8 +237,8 @@
         <label class="form-label">Location File:</label>
         <div style="display: flex; gap: 0.5rem; align-items: center;">
           <div style="flex: 1; position: relative;">
-            <input type="file" id="location_file" class="form-control" accept=".csv,.xls,.xlsx" style="display:none;" />
-            <input type="text" id="location_file_display" class="form-control" placeholder="Load a CSV/Excel file" style="padding-right: 200px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; background-color: rgba(255, 0, 0, 0.1); border-color: rgba(255, 0, 0, 0.3);" readonly />
+            <input type="file" id="location_file" class="form-control" accept=".csv,.xls,.xlsx,.txt" style="display:none;" />
+            <input type="text" id="location_file_display" class="form-control" placeholder="Load a CSV/Excel/TXT file" style="padding-right: 200px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; background-color: rgba(255, 0, 0, 0.1); border-color: rgba(255, 0, 0, 0.3);" readonly />
             <span id="locationFileStatus" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: var(--success); font-size: 0.85em; pointer-events: none; white-space: nowrap;"></span>
           </div>
           <button class="btn btn-secondary btn-sm" id="locationFileLoadBtn" type="button">Load</button>
@@ -247,8 +247,8 @@
         <label class="form-label mt-3">Forecast File:</label>
         <div style="display: flex; gap: 0.5rem; align-items: center;">
           <div style="flex: 1; position: relative;">
-            <input type="file" id="forecast_file" class="form-control" accept=".csv,.xls,.xlsx" style="display:none;" />
-            <input type="text" id="forecast_file_display" class="form-control" placeholder="Load a CSV/Excel file" style="padding-right: 200px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; background-color: rgba(255, 0, 0, 0.1); border-color: rgba(255, 0, 0, 0.3);" readonly />
+            <input type="file" id="forecast_file" class="form-control" accept=".csv,.xls,.xlsx,.txt" style="display:none;" />
+            <input type="text" id="forecast_file_display" class="form-control" placeholder="Load a CSV/Excel/TXT file" style="padding-right: 200px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; background-color: rgba(255, 0, 0, 0.1); border-color: rgba(255, 0, 0, 0.3);" readonly />
             <span id="forecastFileStatus" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: var(--success); font-size: 0.85em; pointer-events: none; white-space: nowrap;"></span>
           </div>
           <button class="btn btn-secondary btn-sm" id="forecastFileLoadBtn" type="button">Load</button>
