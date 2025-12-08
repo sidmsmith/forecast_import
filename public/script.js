@@ -363,7 +363,7 @@ async function parseForecastFile(file) {
   let headerDetected = false;
   let headerRow = null;
 
-  if (extension === 'csv') {
+  if (extension === 'csv' || extension === 'txt') {
     const text = await file.text();
     const lines = text.split(/\r?\n/);
     lines.forEach((line, index) => {
@@ -651,7 +651,7 @@ async function parseLocationFile(file) {
   let headerDetected = false;
   let headerRow = null;
 
-  if (extension === 'csv') {
+  if (extension === 'csv' || extension === 'txt') {
     const text = await file.text();
     const lines = text.split(/\r?\n/);
     lines.forEach((line, index) => {
