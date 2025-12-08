@@ -128,6 +128,18 @@ async function api(action, data = {}) {
   }).then(r => r.json());
 }
 
+// HA tracking function
+async function trackEvent(eventName, metadata = {}) {
+  try {
+    await api('ha-track', {
+      event_name: eventName,
+      metadata: metadata
+    });
+  } catch (error) {
+    // Silently fail - don't interrupt user experience
+  }
+}
+
 // Auth function
 async function authenticate() {
   const org = orgInput.value.trim();
@@ -140,6 +152,7 @@ async function authenticate() {
   const res = await api('auth', { org });
   if (!res.success) {
     status(res.error || 'Auth failed', 'error');
+    await trackEvent('auth_failed', { org: org || 'unknown', error: res.error || 'Auth failed' });
     // On auth failure, hide file and console sections, show auth section
     if (fileSection) {
       fileSection.style.display = 'none';
@@ -159,6 +172,7 @@ async function authenticate() {
 
   token = res.token;
   status(`Authenticated as ${org}`, 'success');
+  await trackEvent('auth_success', { org: org || 'unknown' });
   
   // Hide auth section on successful authentication
   const authSection = document.getElementById('authSection');
@@ -184,14 +198,13 @@ orgInput?.addEventListener('keypress', async e => {
 
 // Auto-authenticate if Organization or ORG parameter is provided in URL
 window.addEventListener('load', async () => {
+  // Track app opened
+  await trackEvent('app_opened', {});
+  
   try {
-    await fetch('/api/validate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'app_opened', org: urlOrg || '' })
-    });
+    await api('app_opened', { org: urlOrg || '' });
   } catch (err) {
-    console.error('App init failed', err);
+    // Silently fail - don't interrupt user experience
   }
   
   // Auto-authenticate if Organization or ORG parameter is provided in URL
@@ -486,11 +499,19 @@ if (forecastFileInput) {
       const fileType = extension === 'csv' || extension === 'txt' ? (extension === 'txt' ? 'TXT' : 'CSV') : 'Excel';
       printFileContentsToConsole(forecastFileData, fileName, fileType, forecastFileHeader);
       
+      // Track file loaded event
+      await trackEvent('forecast_file_loaded', {
+        org: orgInput.value.trim() || 'unknown',
+        filename: fileName,
+        file_type: fileType,
+        item_count: itemCount,
+        has_header: headerDetected
+      });
+      
       // Clear the file input value so the same file can be reloaded
       e.target.value = '';
     } catch (error) {
       // File parsing failed - show error and restore red shading
-      console.error('Error parsing forecast file:', error);
       setForecastFileStatus('');
       
       if (forecastFileDisplay) {
@@ -504,7 +525,14 @@ if (forecastFileInput) {
       forecastFileData = null;
       forecastFileHeader = null;
       e.target.value = '';
-      alert(`Error loading file: ${error.message || 'Failed to parse file. Please ensure the file is a valid CSV, Excel, or TXT file.'}`);
+      const errorMsg = error.message || 'Failed to parse file. Please ensure the file is a valid CSV, Excel, or TXT file.';
+      await trackEvent('file_load_failed', {
+        org: orgInput.value.trim() || 'unknown',
+        filename: fileName || 'unknown',
+        file_type: file ? (file.name.split('.').pop().toLowerCase() === 'txt' ? 'TXT' : file.name.split('.').pop().toLowerCase() === 'csv' ? 'CSV' : 'Excel') : 'unknown',
+        error: errorMsg
+      });
+      alert(`Error loading file: ${errorMsg}`);
     }
   });
 }
@@ -769,11 +797,19 @@ if (locationFileInput) {
       const fileType = extension === 'csv' || extension === 'txt' ? (extension === 'txt' ? 'TXT' : 'CSV') : 'Excel';
       printFileContentsToConsole(locationFileData, fileName, fileType, locationFileHeader);
       
+      // Track file loaded event
+      await trackEvent('location_file_loaded', {
+        org: orgInput.value.trim() || 'unknown',
+        filename: fileName,
+        file_type: fileType,
+        location_count: locationCount,
+        has_header: headerDetected
+      });
+      
       // Clear the file input value so the same file can be reloaded
       e.target.value = '';
     } catch (error) {
       // File parsing failed - show error and restore red shading
-      console.error('Error parsing location file:', error);
       setLocationFileStatus('');
       
       if (locationFileDisplay) {
@@ -787,7 +823,14 @@ if (locationFileInput) {
       locationFileData = null;
       locationFileHeader = null;
       e.target.value = '';
-      alert(`Error loading file: ${error.message || 'Failed to parse file. Please ensure the file is a valid CSV, Excel, or TXT file.'}`);
+      const errorMsg = error.message || 'Failed to parse file. Please ensure the file is a valid CSV, Excel, or TXT file.';
+      await trackEvent('file_load_failed', {
+        org: orgInput.value.trim() || 'unknown',
+        filename: fileName || 'unknown',
+        file_type: file ? (file.name.split('.').pop().toLowerCase() === 'txt' ? 'TXT' : file.name.split('.').pop().toLowerCase() === 'csv' ? 'CSV' : 'Excel') : 'unknown',
+        error: errorMsg
+      });
+      alert(`Error loading file: ${errorMsg}`);
     }
   });
 }
@@ -939,6 +982,14 @@ if (uploadForecastBtn) {
     logToConsole(`Starting forecast upload for ${forecastFileData.length} items...`, 'info');
     status('Uploading forecasts...', 'info');
     
+    // Track upload attempt
+    const forecastFileName = forecastFileDisplay ? forecastFileDisplay.value : 'unknown';
+    await trackEvent('upload_forecast_attempt', {
+      org: org || 'unknown',
+      filename: forecastFileName,
+      record_count: forecastFileData.length
+    });
+    
     let successCount = 0;
     let failCount = 0;
     const errors = [];
@@ -1022,6 +1073,24 @@ if (uploadForecastBtn) {
     } else if (errors.length > 10) {
       logToConsole(`First 10 errors (${errors.length} total):`, 'error');
       errors.slice(0, 10).forEach(err => logToConsole(`  - ${err}`, 'error'));
+    }
+    
+    // Track upload completion
+    const forecastFileName = forecastFileDisplay ? forecastFileDisplay.value : 'unknown';
+    if (failCount > 0 && successCount === 0) {
+      await trackEvent('upload_forecast_failed', {
+        org: org || 'unknown',
+        filename: forecastFileName,
+        error: errors.length > 0 ? errors[0] : 'Upload failed'
+      });
+    } else {
+      await trackEvent('upload_forecast_completed', {
+        org: org || 'unknown',
+        filename: forecastFileName,
+        record_count: forecastFileData.length,
+        success_count: successCount,
+        fail_count: failCount
+      });
     }
     
     status(`Upload complete: ${successCount} succeeded, ${failCount} failed`, successCount > 0 ? 'success' : 'error');
@@ -1123,6 +1192,14 @@ if (uploadLocationsBtn) {
     logToConsole(`Starting location upload for ${locationFileData.length} locations...`, 'info');
     status('Uploading locations...', 'info');
     
+    // Track upload attempt
+    const locationFileName = locationFileDisplay ? locationFileDisplay.value : 'unknown';
+    await trackEvent('upload_locations_attempt', {
+      org: org || 'unknown',
+      filename: locationFileName,
+      record_count: locationFileData.length
+    });
+    
     let successCount = 0;
     let failCount = 0;
     const errors = [];
@@ -1177,6 +1254,24 @@ if (uploadLocationsBtn) {
     } else if (errors.length > 10) {
       logToConsole(`First 10 errors (${errors.length} total):`, 'error');
       errors.slice(0, 10).forEach(err => logToConsole(`  - ${err}`, 'error'));
+    }
+    
+    // Track upload completion
+    const locationFileName = locationFileDisplay ? locationFileDisplay.value : 'unknown';
+    if (failCount > 0 && successCount === 0) {
+      await trackEvent('upload_locations_failed', {
+        org: org || 'unknown',
+        filename: locationFileName,
+        error: errors.length > 0 ? errors[0] : 'Upload failed'
+      });
+    } else {
+      await trackEvent('upload_locations_completed', {
+        org: org || 'unknown',
+        filename: locationFileName,
+        record_count: locationFileData.length,
+        success_count: successCount,
+        fail_count: failCount
+      });
     }
     
     status(`Upload complete: ${successCount} succeeded, ${failCount} failed`, successCount > 0 ? 'success' : 'error');
