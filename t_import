@@ -1,0 +1,30 @@
+[33m42850b1[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Add Upload button handlers and backend endpoints for location and forecast file uploads
+[33mbad4696[m Add .txt file support to Load buttons for comma-delimited text files
+[33m347c867[m Fix Load button handlers - ensure proper initialization and re-initialization after auth
+[33ma253bca[m Fix Load buttons - add missing event handlers for location and forecast file loading
+[33mcd62157[m Remove Statsig and add HA integration to forecast_import app
+[33ma3973c6[m[33m ([m[1;31morigin/dev[m[33m, [m[1;32mdev[m[33m)[m Fix authentication UI - show fileSection instead of non-existent mainUI element
+[33me5d0cd2[m Add Statsig tracking integration with app_name and app_version metadata
+[33m20a216f[m v0.1.12: Add Vercel Analytics
+[33m4c28042[m Revert "v2.3.1: Add Vercel Analytics"
+[33md375927[m v2.3.1: Add Vercel Analytics
+[33me2f142f[m Clear file input value after successful load to allow reloading same file
+[33m3f802e3[m Fix console toggle button - add missing event listeners
+[33m5a9606d[m Fix console toggle container visibility on auth failure
+[33m609e906[m Add console toggle button - console hidden by default, can be toggled with icon button
+[33m352957a[m Verify and improve all field mappings from CSV to API based on Postman collection
+[33md86b625[m Fix ForecastLevel to use CurrentForecast value instead of separate column
+[33m521eadf[m Add Save Forecast Projections API call after Save Forecast completes
+[33m87f15e9[m Implement Upload Forecast button with Save Forecast API
+[33m7f7a5df[m Add raw JSON payload and response logging, change location status to 'locations'
+[33mfa28bed[m Fix header clearing when files are cleared
+[33m4235af3[m Update header detection for location files, print headers in console, and implement Upload Locations API
+[33m72c5092[m Add Location File input with same functionality as Forecast File, add file contents to console, and add Upload Locations button
+[33md8ac8fd[m Bump version to v0.1.1
+[33m8f9668e[m Add ORG URL parameter support, improve auth flow, and update header row detection for Item ID
+[33m081e081[m Update authentication: fix password to Blu3sk!es2400 and improve error handling
+[33m3eae429[m v0.1.0: Add detailed password encoding logging and username format verification
+[33m9b94fbd[m v0.0.9: Add password verification logging and check for env var overrides
+[33m673f47f[m v0.0.8: Add enhanced authentication logging to diagnose 401 error
+[33m0c6c3b9[m v0.0.7: Verify CLIENT_SECRET configuration for sales2 authentication
+[33m7a01e03[m v0.0.6: Add detailed authentication error logging for debugging

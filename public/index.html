@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Import Forecast v0.2.0</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #121212;
+      --card-bg: #1e1e1e;
+      --input-bg: #2d2d2d;
+      --border: #333;
+      --text: #e0e0e0;
+      --text-secondary: #bbbbbb;
+      --text-muted: #999;
+      --primary: #0d6efd;
+      --primary-hover: #0b5ed7;
+      --success: #28a745;
+      --success-hover: #218838;
+      --danger: #dc3545;
+      --danger-hover: #c82333;
+      --workspace-bg: #181818;
+      --workspace-border: #2f2f2f;
+      --workspace-unlocked: #0d6efd;
+      --pre-bg: #252525;
+      --pre-border: #444;
+      --pre-text: #c8c8c8;
+    }
+    
+    /* Manhattan Theme - Using Order Generator colors for better readability */
+    :root.theme-manhattan {
+      --bg-dark: rgb(45, 47, 59);
+      --card-bg: #484e5e;
+      --input-bg: #282c34;
+      --border: #333;
+      --text: #e0e0e0; /* Order Generator text color */
+      --text-secondary: #bbbbbb; /* Order Generator form-label color */
+      --text-muted: #999; /* Order Generator small text color */
+      --primary: #0d6efd; /* Order Generator primary button color */
+      --primary-hover: #0b5ed7; /* Order Generator primary hover */
+      --success: #28a745; /* Order Generator success button color */
+      --success-hover: #218838; /* Order Generator success hover */
+      --danger: #dc3545;
+      --danger-hover: #c82333;
+      --workspace-bg: #282c34;
+      --workspace-border: #333;
+      --workspace-unlocked: #0d6efd; /* Use Order Generator primary */
+      --pre-bg: #282c34;
+      --pre-border: #333;
+      --pre-text: #e0e0e0; /* Order Generator text color */
+    }
+    
+    body {
+      background: var(--bg-dark);
+      color: var(--text);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      position: relative;
+    }
+    .form-control, .form-select {
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+    }
+    .form-control:focus, .form-select:focus {
+      background: var(--input-bg);
+      border-color: var(--primary);
+      box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
+      color: var(--text);
+    }
+    .btn-success { background: var(--success); border: none; }
+    .btn-danger { background: var(--danger); border: none; }
+    .btn-success:hover { background: var(--success-hover); }
+    .btn-danger:hover { background: var(--danger-hover); }
+    
+    /* Manhattan theme: All buttons use blue color */
+    /* Manhattan theme button colors from Order Generator */
+    :root.theme-manhattan .btn-primary {
+      background: #0d6efd !important; /* Order Generator primary */
+      border-color: #0d6efd !important;
+    }
+    :root.theme-manhattan .btn-primary:hover {
+      background: #0b5ed7 !important; /* Order Generator primary hover */
+      border-color: #0b5ed7 !important;
+    }
+    :root.theme-manhattan .btn-success {
+      background: #28a745 !important; /* Order Generator success */
+      border-color: #28a745 !important;
+    }
+    :root.theme-manhattan .btn-success:hover {
+      background: #218838 !important; /* Order Generator success hover */
+      border-color: #218838 !important;
+    }
+    
+    .status { min-height: 1.5em; font-weight: 500; }
+    .workspace {
+      background: var(--workspace-bg);
+      border: 2px dashed var(--workspace-border);
+      border-radius: 12px;
+      min-height: 300px;
+      transition: border-color 0.2s ease;
+    }
+    .workspace.unlocked {
+      border-color: var(--workspace-unlocked);
+    }
+    pre {
+      background: var(--pre-bg);
+      border: 1px solid var(--pre-border);
+      color: var(--pre-text);
+      padding: 1rem;
+      border-radius: 8px;
+      max-height: 300px;
+      overflow: auto;
+      font-size: 0.9em;
+      font-family: 'Consolas', monospace;
+    }
+    .form-label {
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+    /* Manhattan theme form-label uses Order Generator color */
+    :root.theme-manhattan .form-label {
+      color: #bbbbbb !important; /* Order Generator form-label color */
+    }
+    small { color: var(--text-muted); }
+    h2 { color: var(--primary); }
+    
+    /* THEME SELECTOR */
+    .theme-selector-btn {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: none;
+      border: none;
+      color: #e0e0e0;
+      padding: 0;
+      cursor: pointer;
+      font-size: 1.5rem;
+      z-index: 1000;
+      transition: transform 0.2s;
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+    .theme-selector-btn:hover {
+      transform: rotate(90deg);
+    }
+    :root.theme-manhattan .theme-selector-btn {
+      color: #e0e0e0;
+    }
+    :root.theme-manhattan .theme-selector-btn:hover {
+      opacity: 1 !important;
+    }
+    
+    /* Modal styling */
+    .modal-content {
+      background-color: var(--card-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .modal-header, .modal-footer {
+      border-color: var(--border);
+    }
+    .list-group-item {
+      background-color: var(--input-bg);
+      border-color: var(--border);
+      color: var(--text);
+    }
+    .list-group-item:hover {
+      background-color: var(--card-bg);
+    }
+    .list-group-item.active {
+      background-color: var(--primary);
+      border-color: var(--primary);
+    }
+
+    /* Console Output */
+    .console-output {
+      background: #000;
+      border: 1px solid #444;
+      border-radius: 8px;
+      color: #0f0;
+      font-family: 'Courier New', monospace;
+      font-size: 0.8em;
+      padding: 0.75rem;
+      height: 300px;
+      overflow-y: auto;
+      margin-top: 1rem;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .console-output .error { color: #ff6b6b; }
+    .console-output .success { color: #51cf66; }
+    .console-output .info { color: #339af0; }
+    .console-output .warning { color: #ffd43b; }
+
+    /* Manhattan theme: Console title and Upload Forecast button */
+    :root.theme-manhattan #consoleSection h5 {
+      color: #bbbbbb !important; /* Same as form-label color */
+    }
+    :root.theme-manhattan #uploadForecastBtn {
+      background: #0d6efd !important; /* Theme blue color */
+      border-color: #0d6efd !important;
+    }
+    :root.theme-manhattan #uploadForecastBtn:hover {
+      background: #0b5ed7 !important; /* Theme blue hover */
+      border-color: #0b5ed7 !important;
+    }
+  </style>
+</head>
+<body class="p-4">
+  <div class="container">
+    <div class="card p-4">
+      <button class="theme-selector-btn" id="themeSelectorBtn" title="Select Theme">
+        <i class="fas fa-cog"></i>
+      </button>
+      <h2 class="text-center mb-4">Import Forecast v0.2.0</h2>
+
+      <div id="authSection" class="mb-3">
+        <label class="form-label">ORG:</label>
+        <input type="text" id="org" class="form-control" placeholder="Enter ORG" />
+        <small>Press Enter to authenticate</small>
+      </div>
+
+      <div id="fileSection" class="mb-3" style="display:none;">
+        <label class="form-label">Location File:</label>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <div style="flex: 1; position: relative;">
+            <input type="file" id="location_file" class="form-control" accept=".csv,.xls,.xlsx,.txt" style="display:none;" />
+            <input type="text" id="location_file_display" class="form-control" placeholder="Load a CSV/Excel/TXT file" style="padding-right: 200px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; background-color: rgba(255, 0, 0, 0.1); border-color: rgba(255, 0, 0, 0.3);" readonly />
+            <span id="locationFileStatus" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: var(--success); font-size: 0.85em; pointer-events: none; white-space: nowrap;"></span>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="locationFileLoadBtn" type="button">Load</button>
+        </div>
+        
+        <label class="form-label mt-3">Forecast File:</label>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <div style="flex: 1; position: relative;">
+            <input type="file" id="forecast_file" class="form-control" accept=".csv,.xls,.xlsx,.txt" style="display:none;" />
+            <input type="text" id="forecast_file_display" class="form-control" placeholder="Load a CSV/Excel/TXT file" style="padding-right: 200px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; background-color: rgba(255, 0, 0, 0.1); border-color: rgba(255, 0, 0, 0.3);" readonly />
+            <span id="forecastFileStatus" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: var(--success); font-size: 0.85em; pointer-events: none; white-space: nowrap;"></span>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="forecastFileLoadBtn" type="button">Load</button>
+        </div>
+        
+        <div class="text-center mt-3">
+          <button class="btn btn-success" id="uploadLocationsBtn" type="button">Upload Locations</button>
+          <button class="btn btn-success" id="uploadForecastBtn" type="button">Upload Forecast</button>
+        </div>
+      </div>
+
+      <!-- Console Toggle Button -->
+      <div class="text-center mt-3" id="consoleToggleContainer" style="display:none;">
+        <button class="btn btn-sm btn-outline-secondary" id="consoleToggleBtn" type="button" title="Toggle Console">
+          <i class="fas fa-terminal" id="consoleToggleIcon"></i> Console
+        </button>
+      </div>
+
+      <!-- Console Window -->
+      <div id="consoleSection" class="mt-4" style="display:none;">
+        <div class="card p-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0">Console</h5>
+            <button class="btn btn-sm btn-outline-secondary" id="consoleCloseBtn" type="button" title="Hide Console">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="console-output" id="console"></div>
+        </div>
+      </div>
+
+      <div class="status text-center mt-4" id="status"></div>
+    </div>
+  </div>
+
+  <!-- THEME SELECTOR MODAL -->
+  <div class="modal fade" id="themeModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Select Theme</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="list-group" id="themeList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
