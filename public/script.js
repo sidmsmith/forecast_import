@@ -128,7 +128,7 @@ async function api(action, data = {}) {
   }).then(r => r.json());
 }
 
-// HA tracking function
+// Usage tracking (server forwards to dashboard ingest → Neon)
 async function trackEvent(eventName, metadata = {}) {
   try {
     await api('ha-track', {
@@ -148,6 +148,7 @@ async function authenticate() {
     return false;
   }
 
+  await trackEvent('auth_attempt', { org: org || 'unknown' });
   status('Authenticating...');
   const res = await api('auth', { org });
   if (!res.success) {
