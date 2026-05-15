@@ -1,9 +1,8 @@
 // api/validate.js
 import fetch from 'node-fetch';
 
-// Home Assistant Configuration
-const HA_WEBHOOK_URL = process.env.HA_WEBHOOK_URL || "http://sidmsmith.zapto.org:8123/api/webhook/manhattan_app_usage";
-const HA_HEADERS = { "Content-Type": "application/json" };
+const USAGE_INGEST_URL = (process.env.MANHATTAN_USAGE_INGEST_URL || '').trim();
+const USAGE_INGEST_SECRET = (process.env.MANHATTAN_USAGE_INGEST_SECRET || '').trim();
 const APP_NAME = "Import Forecast";
 const APP_VERSION = "0.2.0"; // Match version in index.html title
 
@@ -17,30 +16,39 @@ const CLIENT_SECRET = process.env.MANHATTAN_SECRET || "b4s8rgTyg55XYNun";
 const PASSWORD = process.env.MANHATTAN_PASSWORD || "Blu3sk!es2400";
 const USERNAME_BASE = "rndadmin@"; // Forecast app uses rndadmin@ instead of sdtadmin@
 
-// Helper: send to HA
-async function sendHAMessage(eventName, metadata = {}) {
-  try {
-    const payload = {
-      event_name: eventName,
-      app_name: APP_NAME,
-      app_version: APP_VERSION,
-      timestamp: new Date().toISOString(),
-      ...metadata
-    };
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-    await fetch(HA_WEBHOOK_URL, {
-      method: 'POST',
-      headers: HA_HEADERS,
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    });
-
-    clearTimeout(timeoutId);
-  } catch (error) {
-    // Silently fail - don't interrupt user experience
+async function forwardUsageEvent(payload) {
+  if (!USAGE_INGEST_URL) {
+    console.warn('[usage] MANHATTAN_USAGE_INGEST_URL not set; event not recorded');
+    return;
   }
+  const headers = { 'Content-Type': 'application/json' };
+  if (USAGE_INGEST_SECRET) {
+    headers['Authorization'] = `Bearer ${USAGE_INGEST_SECRET}`;
+  }
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    await fetch(USAGE_INGEST_URL, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+  } catch (e) {
+    console.warn('[usage] Forward failed:', e.message);
+  }
+}
+
+async function emitUsageEvent(eventName, metadata = {}) {
+  const payload = {
+    ...metadata,
+    event_name: eventName,
+    app_name: APP_NAME,
+    app_version: APP_VERSION,
+    timestamp: new Date().toISOString(),
+  };
+  await forwardUsageEvent(payload);
 }
 
 // Get OAuth token
@@ -116,10 +124,10 @@ export default async function handler(req, res) {
 
   const { action, org } = req.body;
 
-  // === HA TRACK EVENT ===
+  // === Client usage track (→ Neon via MANHATTAN_USAGE_INGEST_URL) ===
   if (action === 'ha-track') {
     const { event_name, metadata } = req.body;
-    sendHAMessage(event_name, metadata);
+    await emitUsageEvent(event_name, metadata || {});
     return res.json({ success: true });
   }
 
@@ -132,10 +140,10 @@ export default async function handler(req, res) {
   if (action === 'auth') {
     const token = await getToken(org);
     if (!token) {
-      await sendHAMessage('auth_failed', { org: org || 'unknown' });
+      await emitUsageEvent('auth_failed', { org: org || 'unknown' });
       return res.json({ success: false, error: "Authentication failed. Please check Vercel logs for details." });
     }
-    await sendHAMessage('auth_success', { org: org || 'unknown' });
+    await emitUsageEvent('auth_success', { org: org || 'unknown' });
     return res.json({ success: true, token });
   }
 
@@ -168,7 +176,7 @@ export default async function handler(req, res) {
       const result = await apiCall('POST', '/itemlocation/api/itemlocation/location/save', token, org, locationData);
       return res.json({ success: result.error ? false : true, result });
     } catch (error) {
-      await sendHAMessage('upload_locations_failed', { org: org || 'unknown', error: error.message });
+      await emitUsageEvent('upload_locations_failed', { org: org || 'unknown', error: error.message });
       return res.json({ success: false, error: error.message });
     }
   }
@@ -187,7 +195,7 @@ export default async function handler(req, res) {
       const result = await apiCall('POST', '/ai-forecast/api/ai-forecast/forecast/save', token, org, forecastData);
       return res.json({ success: result.error ? false : true, result });
     } catch (error) {
-      await sendHAMessage('upload_forecast_failed', { org: org || 'unknown', error: error.message });
+      await emitUsageEvent('upload_forecast_failed', { org: org || 'unknown', error: error.message });
       return res.json({ success: false, error: error.message });
     }
   }
