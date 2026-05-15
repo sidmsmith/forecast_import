@@ -140,10 +140,8 @@ export default async function handler(req, res) {
   if (action === 'auth') {
     const token = await getToken(org);
     if (!token) {
-      await emitUsageEvent('auth_failed', { org: org || 'unknown' });
       return res.json({ success: false, error: "Authentication failed. Please check Vercel logs for details." });
     }
-    await emitUsageEvent('auth_success', { org: org || 'unknown' });
     return res.json({ success: true, token });
   }
 
