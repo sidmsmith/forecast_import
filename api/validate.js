@@ -3,8 +3,8 @@ import fetch from 'node-fetch';
 
 const USAGE_INGEST_URL = (process.env.MANHATTAN_USAGE_INGEST_URL || '').trim();
 const USAGE_INGEST_SECRET = (process.env.MANHATTAN_USAGE_INGEST_SECRET || '').trim();
-const APP_NAME = "Import Forecast";
-const APP_VERSION = "0.2.0"; // Match version in index.html title
+const APP_NAME = "forecast-import";
+const APP_VERSION = "0.2.1"; // Match version in index.html title (Neon app_name slug)
 
 // Forecast app uses sales2 environment (different from other apps)
 const AUTH_HOST = process.env.MANHATTAN_AUTH_HOST || "sales2-auth.omni.manh.com";
